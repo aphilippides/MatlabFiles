@@ -1,0 +1,20 @@
+function MatlabForDummies
+
+Fitnesses=[];
+for i=1:length(ilist)
+    h=load(['FilenameNumber' int2str(i) '.dat']);
+    Fitnesses=[Fitnesses; h];
+end
+
+ElecIndices=find(Fitnesses(:,2)==1);  % find indices of elec connections
+
+for i=1:length(ilist)
+    if(ilist(i)<14) fso=[fso OnePtFitnessesO(ilist(i),:)];
+    elseif(ilist(i)>15) fso=[fso OnePtFitnessesO(ilist(i)-2,:)];
+    end
+end
+[y1,x1]=hist(fso,50);
+[y2,x2]=hist(fsv,50);
+maxht=1.1*max(max(y1/length(fso)),max(y2/length(fsv)));
+subplot(2,1,1),bar(x1,y1/length(fso)),SetYLim(gca,0,maxht);
+subplot(2,1,2),bar(x2,y2/length(fsv)),SetYLim(gca,0,maxht);

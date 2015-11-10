@@ -1,0 +1,108 @@
+% $Id: .octaverc,v 1.24 2003-01-16 22:54:42-06 brinkman Exp $
+%
+% .octaverc: init file for octave and iode
+
+% This program is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation (http://www.gnu.org/copyleft/gpl.html).
+
+1;
+
+global isoctave;
+global ismatlab;
+global numtol;
+
+numtol=10^-12;	% numerical tolerance; values less than numtol will be
+				% treated as zero
+
+isoctave=1;
+ismatlab=0;
+
+gset('nokey');
+
+implicit_str_to_num_ok=0;
+crash_dumps_octave_core=0;
+empty_list_elements_ok=1;
+warn_divide_by_zero=0;
+automatic_replot=1;
+
+% The remainder of this file consists of reimplementations of Matlab
+% functions required by Iode. Unfortunately, it is necessary to define
+% them through eval statements since some of them are read-only functions
+% in some versions of Octave.
+
+% detection of Unix or Windows, assuming that Octave under Windows
+% requires Cygwin. Many thanks to Andy Adler for suggesting this
+% solution!
+if ~exist('isunix')
+	eval(['function flag=isunix()\n' \
+			'flag=isempty(findstr(computer(),''cygwin''));\n' \
+		'end']);
+end
+
+if ~exist('ispc')
+	eval(['function flag=ispc()\n' \
+			'flag=~isunix;\n' \
+		'end']);
+end
+
+if ~exist('ischar')
+	eval(['function flag=ischar(s)\n' \
+			'flag=isstr(s);\n' \
+		'end']);
+end
+
+if ~exist('cla')
+	eval(['function cla\n' \
+			'clg;\n' \
+		'end']);
+end
+
+if ~exist('lasterr')
+	eval(['function txt=lasterr\n' \
+			'txt=__error_text__;\n' \
+		'end']);
+end
+
+if ~exist('vectorize')
+	eval(['function fs=vectorize(ff)\n' \
+			'fs=strrep(ff,''*'',''.*'');\n' \
+			'fs=strrep(fs,''*.*'',''**'');\n' \
+			'fs=strrep(fs,''/'',''./'');\n' \
+			'fs=strrep(fs,''^'',''.^'');\n' \
+			'fs=strrep(fs,''..'',''.'');\n' \
+		'end'])
+end
+
+if ~exist('beep')
+	eval(['function beep()\n' \
+			'disp(setstr(7));\n' \
+		'end']);
+end
+
+% a simple approximation of Matlab's inline functions; only to be used
+% with feval, inspired by Paul Kienzle's workaround at
+% http://users.powernet.co.uk/kienzle/octave/matcompat/HTML/inline.html
+if ~exist('inline')
+	eval(['function name=inline(...)\n' \
+			'i=round(rand(1)*10000);\n' \
+			'while (1)\n' \
+				'name=sprintf(''__inline%d'',i);\n' \
+				'if !exist(name)\n' \
+					'break;\n' \
+				'end\n' \
+				'i=i+1;\n' \
+			'end\n' \
+			'fs=va_arg();\n' \
+			'params=''('';\n' \
+			'for i=2:nargin\n' \
+				'params=[params va_arg()];\n' \
+				'if i<nargin\n' \
+					'params=[params '',''];\n' \
+				'end\n' \
+			'end\n' \
+			'params=[params '')''];\n' \
+			'eval([''function __val='' name params ' \
+				''' __val='' fs ''; end'']);\n' \
+		'end']);
+end

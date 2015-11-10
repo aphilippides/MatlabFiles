@@ -1,0 +1,36 @@
+% Example file NB in matlab % comments out text
+function ShowSpeciation
+
+% The first thing to do is to extract the frequencies 
+% from each file
+% what I'll do is loop through each file, extract the frequencies and store
+% them in a matrix
+
+GenNums=[1999]; % you will have all the generations numbers 
+                % in this variable ie GenNums=[99,199,299, ...]
+for i=1:length(GenNums)
+    
+    % load each file
+    GenData=load(['generation_' int2str(GenNums(i) '.txt'],'-ascii');
+    
+    % Extract the 2nd column
+    SpeciesVals=GenData(:,2);
+    
+    % Use 'hist' to extract frequencies
+    % See the help on hist for precise details but it basically
+    % m=hist(x,BinCentres) bins the data in x into bins whos centres are 
+    % specified in BinCentres. 
+    BinCentres=1:100;
+    % In this code I have assumed you want 100 bins and values are 1 to 100
+    % but if you wanted frequencies for only 10 bins (0-10, 10-20 etc
+    % You would do: BinCentres = 5:10:95;
+    
+    % get frequencies and put them into the i'th row of a matrix
+    Freqs(i,:)=hist(SpeciesVals,BinCentres);
+end
+
+% Finally 
+    
+    
+                
+            

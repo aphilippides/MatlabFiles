@@ -1,0 +1,455 @@
+% function GetChannelData(f)
+%
+% function to interactively get position of nest and landmark in file f
+% (entered as a string without the .avi extension)
+%
+% Allows picking to initialise from a previous file
+%
+% USAGE:
+%
+% eg:   GetNestAndLMData('90_21_out10')
+
+function[fn]=GetChannelData(f,flist,Check)
+
+fn=[f 'NestLMData.mat'];
+ff=[f '.avi'];
+
+disp(' ')
+disp(['nest and Lm for file ' f])
+disp(' ')
+
+[vO,vObj]=VideoReaderType(ff);
+
+
+if(isfile(fn))
+    if(Check)
+        load(fn);
+        calibim=CheckStartEnd(vObj,ff,fn,StartEnd);
+        if(~exist('calibdat','var'))
+        end
+        calibdat=AdjustCal(calibdat,calibim,fn);
+    end
+else 
+    calibim=CheckStartEnd(vObj,ff,fn);
+
+    % number of channel sides
+    numchan=1;
+    wid=size(calibim,2);
+
+    % Initialise from a previous file 
+    calibdat=InitFile(flist,fn);
+    if(isequal(calibdat,-1))
+        % start afresh if no file picked
+        calibdat.pot=[];
+        calibdat.potWid=[];
+        calibdat.chan.top=[];
+        calibdat.chan.bot=[];
+        calibdat.rul=[];
+        calibdat.comp=[];
+        calibdat.cmPerPix=[];
+        calibdat.compassDir=[];
+        [calibdat]=InitialisePoints(calibim,numchan,calibdat,wid,fn);
+    end
+    save(fn,'calibdat','-append')
+    calibdat=AdjustCal(calibdat,calibim,fn);
+    save(fn,'calibdat','-append')
+end
+
+
+
+% this is an aide memoire about how to move all points together
+% bits of it need to be combined into AdjustCal to work
+function MovePointsAsOne
+while 0
+    PlotStuff(calibdat,calibim);
+asone=0;
+    if(asone)
+        xlabel('return end; l move LMs singly; a change axis')%r rescale;
+    else
+        xlabel('return end; l move LMs together; a change axis')%r rescale; 
+    end
+        pts=[LM;nest];
+        ptWid=[LMWid;NestWid];
+    [adj,b,x,y]=GetNearestClickedPt(pts);
+    if(adj==0) 
+        break;
+    elseif(b==108)
+        asone=mod(asone+1,2);
+    elseif(b==97)
+        while 1
+            AxX=input('pick new axes format [x1 x2 y1 y2]');
+            if(isequal(size(AxX),[1 4])) 
+                break; 
+            end;
+        end        
+    else
+        if(exptype==3)
+            [pts(adj,:),dum,d]=GetNewPoint(pts(adj,:),10,x,y,exptype,pts(oth,:));
+        else
+            [pts(adj,:),ptWid(adj),d]=GetNewPoint(pts(adj,:),ptWid(adj),x,y,exptype);
+        end
+        if(adj<=nlm)
+            ptWid(1:nlm)=ptWid(adj);
+            if(asone)
+                inds=[1:adj-1 adj+1:nlm];
+                for k=inds
+                    pts(k,1)=pts(k,1)+d(1);
+                    pts(k,2)=pts(k,2)+d(2);
+                end
+            end
+        end
+    end;
+end
+
+function[p,pw,d]=GetNewPoint(p,pw,x,y)
+oldp=p;
+col='g';
+% if(nargin>2)
+p=[x y];
+
+h=MyCircle(p,pw/2,col);
+h=[h;plot(p(1),p(2),[col 'x'])];
+% else
+%     h=[];    
+% end
+mm=2.5;
+mma=25;
+pwadd=0.5;
+a1=p-max(mm*pw,mma);
+a2=p+max(mm*pw,mma);
+axis([a1(1) a2(1) a1(2) a2(2)])
+while 1
+    title('click position; cursors move x; [ or ] dec/increase radius; a set axis; return end')
+    [x,y,b]=ginput(1);
+    if(isempty(x))
+        % this is used if you want to move all the points as one
+        d=p-oldp;
+        delete(h);
+        break;
+    elseif(b==30) % up cursor
+        p(2)=p(2)-pwadd;
+    elseif(b==31) % down cursor
+        p(2)=p(2)+pwadd;
+    elseif(b==28) % left cursor
+        p(1)=p(1)-pwadd;
+    elseif(b==29) % right cursor
+        p(1)=p(1)+pwadd;
+    elseif(b==93) % right bracket ]
+        pw=pw+pwadd;
+    elseif(b==91) % left bracket [
+        pw=max(pw-pwadd,1);
+%     elseif(b==110) % n
+%         pwadd=input(['n = ' num2str(pwadd) '; enter new value: ']);
+    elseif(b==97) % a
+        mma=input(['axis width = ' int2str(mma) '; enter new value: ']);
+    else
+        p=[x y];
+    end
+    delete(h);
+    h=MyCircle(p,pw/2,col);
+    h=[h;plot(p(1),p(2),[col 'x'])];
+    a1=p-max(mm*pw,mma);
+    a2=p+max(mm*pw,mma);
+    axis([a1(1) a2(1) a1(2) a2(2)])
+end
+
+function[calibdat]=InitialisePoints(calibim,numchan,wid,fn)
+
+% Get sides of the channels
+for i=1:numchan
+    [calibdat.chan(i).top]=GetLineAndComp(calibim,calibdat,'top of channel',50,[1 wid]);
+    [li]=GetLineAndComp(calibim,calibdat,'bottom of channel',50,[1 wid]);
+    if(li(1,2)>calibdat.chan(i).top(1,2))
+        calibdat.chan(i).bot=calibdat.chan(i).top;
+        calibdat.chan(i).top=li;
+    else
+        calibdat.chan(i).bot=li;
+    end
+end
+
+% get the ruler
+[calibdat.rul]=GetLineAndComp(calibim,calibdat,'ruler mark',50);
+calibdat.comp=calibdat.rul([2 1],:);
+[calibdat.cmPerPix,calibdat.compassDir]=GetNorthAndMetric(rul);
+
+
+% get pot position if learning/return
+imagesc(calibim);
+hold on
+PlotStuff(calibdat);
+axis equal;
+hold off
+title('Click 4 points on top of pot; return if no pot')
+[x,y]=ginput(4);
+if(length(x)<4)
+    calibdat.pot=[];
+    calibdat.potWid=[];
+else
+    X=[x y];
+    ds=diff(X);
+    d=sqrt(sum(ds.^2,2));
+    calibdat.potWid=mean(d([1 3]));
+    calibdat.pot=mean(X,1);
+end
+save(fn,'calibdat','-append');
+
+
+function[calibdat]=InitFile(flist,fn)
+disp(['Initialise file for: ' fn]);
+if(isempty(flist))
+    calibdat=-1;
+    return;
+end
+
+WriteFileOnScreen(flist,1);
+% if(flist(end).nlm==dat.nlm)
+%     fl=flist(end).name;
+% else
+%     fl=[];
+% end
+disp(' ');
+% disp(['Using file ' fl ';']);
+% pic=input('return ok; 0 dont initialise; number=another file: ');
+pic=input('pick file to initialise from; return don''t init: ');
+if(isempty(pic))
+    disp('No calibration file picked');
+    calibdat=-1;
+else
+    load(flist(pic).name,'calibdat');   
+end
+
+function[rul]=GetLineAndComp(calibim,calibdat,tstr,axl,xval)
+
+if(nargin<5)
+    xval=[];
+end
+rul=zeros(2)*NaN;
+
+hold off;    
+imagesc(calibim);
+hold on;
+PlotStuff(calibdat);
+axis equal;
+ax=axis;
+
+% Get the calibration point
+for i=1:2
+    axis(ax);
+    if(i==1)
+        title(['Click left end of ' tstr]);
+    else
+        title(['Click right end of ' tstr]);
+    end
+    h=[];
+    while 1
+        [x,y]=ginput(1);
+        delete(h);
+        if(isempty(x))
+            break;
+        end
+
+        % if necessary fix them to the end point
+        if(~isempty(xval))
+            x=xval(i);
+        end
+
+        rul(i,:)=[x y];
+        h=plot(rul(:,1),rul(:,2),'r-x','LineWidth',1.5,'MarkerSize',10);
+        axis([x-axl,x+axl,y-axl,y+axl])
+        xlabel('adjust till good; return if ok')
+    end
+end
+
+% make sure they're in left right order
+if(rul(1,1)>rul(2,1))
+    rul=rul([2 1],:);
+    delete(h);
+    h=plot(rul(:,1),rul(:,2),'r-x','LineWidth',1.5,'MarkerSize',10);
+end
+hold off
+
+% [rul,comp,cmPerPix,compassDir]=AdjustCal(rul,comp,calibim,cmPerPix,...
+%     compassDir,fn,SepComp);
+    
+function[calibim]=CheckStartEnd(vObj,ff,fn,StartEnd)
+
+if(nargin<4)
+    StartEnd(1)=input('enter start frame: ');
+    StartEnd(2)=input('enter end frame: ');
+end
+
+% if not using VideoReader, force it to use mmread to get the whole frame
+if(isempty(vObj))
+    vObj=3;
+end
+% % turn seconds into frames
+% StartEnd=StartEnd*25;
+% first check the entered start and end points
+[avf,lastframe]=MyAviInfo(ff);
+ind=1;
+refim=StartEnd(ind);
+tstr='start';
+while 1
+    calibim=MyAviRead(ff,refim,vObj);
+    imagesc(calibim);
+    title(fn)
+    %     axis(AxX);
+    axis equal;
+    title(['Checking ' tstr ' of film']);
+    xlabel(['Frame ' int2str(refim) ' out of ' int2str(lastframe)])
+    a=input('return if no ant; enter frame number to select new:  ');
+    if(isempty(a))
+        if(ind==1)
+            ind=2;
+            refim=StartEnd(ind);
+            startim=calibim;
+            tstr='end';
+        else
+            break;
+        end
+    elseif(a>0)
+        StartEnd(ind)=a;
+        refim=a;
+    end
+end
+if(isfile(fn))
+    save(fn,'StartEnd','refim','calibim','startim','-append')
+else
+    save(fn,'StartEnd','refim','calibim','startim')
+end    
+
+function[calibdat]=AdjustCal(calibdat,calibim,fn)
+
+disp('adjust points by clicking in figure window.')
+disp('enter return in figure window to end')
+
+axL=50;
+hold off;
+clf
+imagesc(calibim);
+axis equal;
+ax=axis;
+if(isempty(calibdat.pot))
+    nopot=1;
+else
+    nopot=0;
+end
+hold on
+while 1
+    h=PlotStuff(calibdat);
+    axis(ax)
+    tst='click near a point to move it; return when done';
+%     if(isequal(SepComp,-1))
+%         % if ruler is differemt to compass
+%         pts=[rul;comp];
+%     else
+    if(nopot) 
+        pts=[1e6 1e6;calibdat.rul];
+    else
+        pts=[calibdat.pot;calibdat.rul];
+    end
+    for i=1:length(calibdat.chan)
+        pts=[pts;calibdat.chan(i).top;calibdat.chan(i).bot];
+    end
+%     end
+    [adj,b,x,y]=GetNearestClickedPt(pts,tst);
+    if(adj==0) 
+        % if all is ok
+        delete(h);
+        break;  
+    elseif((adj==1)&&(~nopot))
+        % if it's the pot
+        % NB d is used if you want to move all points as one. See
+        % function MovePointsAsOne
+        [calibdat.pot,calibdat.potWid,d]=GetNewPoint(pts(adj,:),...
+            calibdat.potWid,x,y);
+        delete(h)
+    else
+        while 1
+            delete(h)
+           
+            pts(adj,:)=[x y];
+%             calibdat.pot=pts(1,:);
+            calibdat.rul=pts(2:3,:);
+            for i=1:length(calibdat.chan)
+                val=3+4*(i-1)+1;
+                calibdat.chan(i).top(:,2)=pts(val:(val+1),2);
+                calibdat.chan(i).bot(:,2)=pts((val+2):(val+3),2);
+            end
+            h=PlotStuff(calibdat);
+            axis([x-axL,x+axL,y-axL,y+axL])
+
+            xlabel('adjust till good; return if ok')
+            [x,y]=ginput(1);
+            if(isempty(x))
+                delete(h);
+                break;
+            end
+%             if(isequal(SepComp,-1))
+%                 % if ruler is differemt to compass
+%                 PlotStuff(pts(1:2,:),pts(3:4,:),calibim,cmPerPix,compassDir);
+%             else
+%                 PlotStuff(pts(1:2,:),pts([2 1],:),calibim,cmPerPix,compassDir);
+%             end
+        end
+    end;
+    calibdat.comp=calibdat.rul([2 1],:);
+
+    [calibdat.cmPerPix,calibdat.compassDir]=...
+        GetNorthAndMetric(calibdat.rul,calibdat.comp);
+    save(fn,'calibdat','-append')
+end
+hold off;
+
+function[cmPerPix,compassDir]=GetNorthAndMetric(rul,comp)
+% set the distance metric
+d=CartDist(rul(1,:),rul(2,:));
+cmPerPix=50/d;
+
+% set the compass
+d=comp(2,:)-comp(1,:);
+compassDir=cart2pol(d(1),d(2));
+
+function[h,axo]=PlotStuff(calibdat,calibim)
+axL=75;
+isho=ishold(gca);
+if((nargin>1)&&(~isempty(calibim)))
+    imagesc(calibim);
+    axis equal;
+    hold on
+end
+h=[];
+for i=1:length(calibdat.chan)
+    if(~isempty(calibdat.chan(i).top))
+        h=[h;plot(calibdat.chan(i).top(:,1),calibdat.chan(i).top(:,2),'r-o',...
+            'LineWidth',1.5,'MarkerSize',10)];
+    end
+    if(~isempty(calibdat.chan(i).bot))
+        h=[h;plot(calibdat.chan(i).bot(:,1),calibdat.chan(i).bot(:,2),'b-o',...
+            'LineWidth',1.5,'MarkerSize',10)];
+    end
+end
+if(~isempty(calibdat.pot))
+    h=[h;MyCircle(calibdat.pot(1),calibdat.pot(2),calibdat.potWid/2,'b')];
+end
+if(~isempty(calibdat.rul))
+    h=[h;plot(calibdat.rul(:,1),calibdat.rul(:,2),'g-x',...
+        calibdat.comp(:,1),calibdat.comp(:,2),'g-',calibdat.comp(1,1),calibdat.comp(1,2),'go',...
+        calibdat.comp(2,1),calibdat.comp(2,2),'gd',...
+        'LineWidth',1.5,'MarkerSize',10)];
+end
+% mi=max(min([rul;comp])-axL,1);
+% ma=max([rul;comp])+axL;
+% ax=[mi(1) ma(1) mi(2) ma(2)];
+% if(sum(isnan(ax))==0)
+%     axis(ax);
+% end
+
+if(~isempty(calibdat.cmPerPix)&&~isempty(calibdat.compassDir))
+    h=[h;CompassAndLine('y',calibdat.cmPerPix,[],calibdat.compassDir)];
+%     CompassAndLine('y',calibdat.cmPerPix,[],calibdat.compassDir);
+end
+axo=axis;
+if(~isho)
+    hold off;
+end

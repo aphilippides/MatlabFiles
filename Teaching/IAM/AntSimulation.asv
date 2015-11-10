@@ -1,0 +1,26 @@
+function AntSimulation
+
+MaxSteps = 50;
+OldPos=[0,0]
+% AntPos(1,:)=[0 0];
+for t=1:MaxSteps
+    % sense
+    Senses=0; % not currently sensing anything
+    % Move
+    NewPos=MoveAntRandom(OldPos,Senses);
+    vec=[OldPos;NewPos];
+    plot(vec(:,1),vec(:,2),'k')
+    axis equal
+    hold on
+%     OldPos=NewPos;
+
+%     AntPos(t+1)=MoveAntRandom(AntPos(t));
+%     plot(AntPos(:,1),AntPos(:,2),'k')
+    
+end
+hold off
+
+function[NewPos]=MoveAntRandom(OldPos,S)
+
+rand_step=rand(1,2);%-0.5;
+NewPos=OldPos+rand_step;

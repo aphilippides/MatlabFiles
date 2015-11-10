@@ -1,0 +1,391 @@
+function[ang3,ang,sfs,odat] = ProcessFlightSections(fltsec,pl,fstr)
+if(nargin<2) pl=1; end;
+if(nargin<3) fstr='temp'; end;
+ts=-180:10:180;
+ang=[];
+ang2=[];
+ang3=[];
+brs=[];
+mpsi=[];nors=[];o2n=[];f2n=[];
+cpdata=[];psirange=[];psirangel=[];a2nest=[];o2nrange=[];
+end2nest=[];corangeDat=[];
+% get compasses
+for i=1:length(fltsec)
+    if(strfind(cd,'2008'))
+        load(fltsec(i).fn);
+        fltsec(i).cmpdir=compassDir;
+    else  fltsec(i).cmpdir=4.94;
+    end
+end
+pea=[2,13,21,32]
+the=-170:10:180;
+p_thr=0.1745;
+pnum=[3 1 2 4];
+if(pl)
+    figure(1)
+    for sp=1:4
+        subplot(2,2,sp)
+        PlotNestAndLMs(fltsec(1).lm,fltsec(1).lmw,[0 0],0);
+        hold on
+    end
+end
+for i=1:(length(ts)-1)
+    sfs(i).so=[];
+    sfs(i).co=[];
+    sfs(i).a=[];
+    sfs(i).psi=[];
+    sfs(i).psi2=[];
+    sfs(i).spsi=[];
+    sfs(i).rpsi=[];
+    sfs(i).rpsi2=[];
+    sfs(i).t=[];
+    sfs(i).nf=[];
+    sfs(i).nor=[];
+    sfs(i).o2n=[];
+    for k=1:size(fltsec(1).lm,1)
+        a2lm(k).as=[];
+        sfs(i).lor(k).lor=[];
+        lors(k).lor=[];
+    end
+end
+
+figure(2)
+npl=1+size(fltsec(1).lm,1);
+for sp=1:npl
+    subplot(1,npl,sp)
+    PlotNestAndLMs(fltsec(1).lm,fltsec(1).lmw,[0 0],0);
+    hold on
+end
+for i=1:length(fltsec)
+    %     cmpdir=4.93;%0.6;%
+    cmpdir=fltsec(i).cmpdir;
+    load(fltsec(i).fn);
+    if(exist('cmPerPix'))
+    [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+        ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fltsec(i).fn,t,OToNest,cmPerPix,compassDir);
+    else
+        [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+            ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fltsec(i).fn,t,OToNest,[],[]);
+    end
+
+    lm=fltsec(i).lm;
+    lmo=LMOrder(lm);
+    lm=lm(lmo,:);
+    LMs=LMs(lmo);
+    nors=[nors;NestOnRetina];
+    for k=1:size(fltsec(1).lm,1)
+        lors(k).lor=[lors(k).lor;LMs(k).LMOnRetina];
+    end
+    for j=1:length(fltsec(i).fsec);
+        fltsec(i).fsec(j).pic=0;
+        cs=fltsec(i).fsec(j).cs;
+        is=fltsec(i).fsec(j).is;
+        t_s=t(is);
+        fltsec(i).fsec(j).t=t_s;
+        if(size(cs,1)>=4)
+            fltsec(i).fsec(j).pic=1;
+            br=robustfit(cs(:,1),cs(:,2));
+            brs=[brs br(2)];
+            a=atan2(br(2),1);
+            ang2=[ang2;MeanAngle(fltsec(i).fsec(j).co)];
+            if(a>=0)
+                if(cs(1,1)>cs(end,1)) a=a-pi;end
+            else
+                if(cs(1,1)>cs(end,1)) a=a+pi;end
+            end
+            
+            midpt=mean(cs,1);
+            v=[0 0]-midpt;
+            a2nest=[a2nest AngularDifference(a,cart2pol(v(1),v(2)))];
+            v=-cs(end,:);
+            end2nest=[end2nest AngularDifference(a,cart2pol(v(1),v(2)))];
+            for k=1:size(lm,1)
+                v=lm(k,:)-midpt;
+                a2lm(k).as=[a2lm(k).as AngularDifference(a,cart2pol(v(1),v(2)))];
+            end
+            
+            a=mod(a-cmpdir,2*pi);
+            if(a>=pi)
+                ang = [ang a-pi];
+                a=a-2*pi;
+            else ang =[ang a];
+            end
+            ang3=[ang3 a];
+            
+            ind=find(hist(a*180/pi,ts))-1;
+            if(ind==0) ind=36; end;
+            fltsec(i).fsec(j).a=a;
+            sfs(ind).so=[sfs(ind).so fltsec(i).fsec(j).so];
+            sfs(ind).a=[sfs(ind).a ones(1,length(fltsec(i).fsec(j).so))*a];
+            sfs(ind).co=[sfs(ind).co fltsec(i).fsec(j).co'];
+            sfs(ind).t=[sfs(ind).t t_s(end)-t_s(1)];
+            sfs(ind).nf=[sfs(ind).nf is(end)-is(1)];
+            sfs(ind).nor=[sfs(ind).nor NestOnRetina(is)'];
+            sfs(ind).o2n=[sfs(ind).o2n OToNest(is)'];
+            for k=1:size(lm,1)
+                sfs(ind).lor(k).lor=[sfs(ind).lor(k).lor LMs(k).LMOnRetina(is)'];
+            end
+            
+            cpdata=[cpdata;fltsec(i).fsec(j).co fltsec(i).fsec(j).so'];
+            rflag=0;
+            
+            % plot lines corresponding to peak directions
+            if(pl)
+                figure(1)
+                for sp=1:4
+                    if(ind==pea(sp))
+                        subplot(2,2,pnum(sp))
+                        plot(cs(:,1),br(1)+br(2)*cs(:,1),'r-', cs(:,1),cs(:,2),'b x',cs(1,1),cs(1,2),'go')
+                        xlabel(['lines for angle ' int2str(the(pea(sp)))])
+                        %                 title(['angle to nest and lms = ' int2str(round([a2nest(end) a2lm(1).as(end) a2lm(2).as(end)]*180/pi))])
+                    end
+                end
+                % plot nest and lm pointers
+                figure(2)
+                if(abs(a2nest(end))<p_thr)
+                    subplot(1,npl,1)
+                    plot(cs(:,1),br(1)+br(2)*cs(:,1),'r-', cs(:,1),cs(:,2),'b x',cs(1,1),cs(1,2),'go')
+                end
+                for sp=2:npl
+                    if(abs(a2lm(sp-1).as(end))<p_thr)
+                        subplot(1,npl,sp)
+                        plot(cs(:,1),br(1)+br(2)*cs(:,1),'r-', cs(:,1),cs(:,2),'b x',cs(1,1),cs(1,2),'go')
+                    end
+                end
+            end
+            psi=AngularDifference(a,fltsec(i).fsec(j).so);
+            realpsi=AngularDifference(fltsec(i).fsec(j).co,fltsec(i).fsec(j).so);
+            [mp,vp]=MeanAngle(psi);
+            [mang,vang]=MeanAngle(realpsi);
+            [mso,vso]=MeanAngle(fltsec(i).fsec(j).so');
+            sfs(ind).psi2=[sfs(ind).psi2, mang];
+            sfs(ind).psi=[sfs(ind).psi, mp];
+            sfs(ind).spsi=[sfs(ind).spsi, vang];
+            tmp=AngleWithoutFlip(psi);
+            sfs(ind).rpsi=[sfs(ind).rpsi, abs(AngularDifference(max(tmp),min(tmp)))];
+            tmp=AngleWithoutFlip(fltsec(i).fsec(j).so');
+            tmp2=abs(gradient(tmp([1 1:end end])));
+            tmp2=tmp2(2:end-1);
+            psirange=[psirange;max(tmp)-min(tmp) i j median(tmp2) mean(tmp2) t_s(end)-t_s(1)];
+            sfs(ind).rpsi2=[sfs(ind).rpsi2, max(tmp)-min(tmp)];
+            mpsi=[mpsi;mp,vp];
+            % do something with longs
+            if(pl&&(size(cs,1)>=5))
+                disp([fltsec(i).fn ' psi range = ' int2str(round((max(tmp)-min(tmp))*180/pi)) ...
+                    '; times ' num2str(t_s(1)) ' to ' num2str(t_s(end))]);
+                psirangel=[psirangel;max(tmp)-min(tmp) i j median(tmp2) mean(tmp2)];
+            end
+            tmp=AngleWithoutFlip(OToNest(is));
+            tmp2=abs(gradient(tmp([1 1:end end])));
+            tmp2=tmp2(2:end-1);
+            o2nrange=[o2nrange;max(tmp)-min(tmp) i j median(tmp2) mean(tmp2) t_s(end)-t_s(1)];
+            
+            codat.co=fltsec(i).fsec(j).co';
+            codat.dco=AngularDifference(fltsec(i).fsec(j).co,ang2)';
+            codat.mdco=max(abs(dco));
+            codat.aco=AngleWithoutFlip(fltsec(i).fsec(j).co)';
+            codat.ran=max(aco)-min(aco);
+            corangeDat=[corangeDat;codat];
+                            % plot rate of change of flight dir rel to nest and psi
+%             if(ind==pea(3))    
+%                 dco=AngularDifference(fltsec(i).fsec(j).co,OToNest(is));
+%                 figure(3)
+%                 subplot(2,1,1),plot(t_s-t_s(1),dco*180/pi,t_s-t_s(1),realpsi*180/pi,'r:'),hold on
+%                 subplot(2,1,2),plot(t_s-t_s(1),dco./realpsi),hold on
+%             end
+        end
+        %     pause
+    end
+end
+figure(3),subplot(2,1,1),hold off;subplot(2,1,2),hold off;
+for i=1:36
+    if(length(sfs(i).nor)>0)
+        prn(i)=round(100*length(find(abs(sfs(i).nor)<p_thr))/length(sfs(i).nor));
+        for k=1:size(lm,1)
+            prl(i,k)=round(100*length(find(abs(sfs(i).lor(k).lor)<p_thr))/length(sfs(i).lor(k).lor));
+        end
+    else
+        prn(i)=0;
+        for k=1:size(lm,1) prl(i,k)=0; end
+    end
+    sfs(i).prn=prn(i);
+    sfs(i).prl=prl(i,:);
+    sfs(i).numflt=length(sfs(i).nf);
+    %      plot(mod(sfs(i).a*180/pi,360),sfs(i).so*180/pi,'.')
+    %      plot(sfs(i).a*180/pi,AngularDifference(sfs(i).a,sfs(i).so)*180/pi,'.')
+    p(i,:)=AngHist(AngularDifference(sfs(i).a,sfs(i).so)*180/pi);
+    % hold on;
+    % plot(ts(i),max(p(i,:))-1,'r*');
+    % hold off
+    % pause
+end
+sfs(1).totpn=round(100*length(find(abs(nors)<p_thr))/length(nors));
+totpn=sfs(1).totpn;
+for k=1:size(lm,1)
+    sfs(1).totpl(k)=round(100*length(find(abs(lors(k).lor)<p_thr))/length(nors));
+    totpl(k)=sfs(1).totpl(k);
+end
+
+% plot(-170:10:180,prn,-170:10:180,pl)
+% axis tight
+
+if(pl)
+    figure(1)
+    for sp=1:4
+        subplot(2,2,sp)
+        axis equal
+        hold off
+    end
+    figure(2)
+    for sp=1:npl
+        subplot(1,npl,sp)
+        axis equal
+        hold off
+    end
+end
+
+pea_ang=the(pea);
+peaL=(pea_ang-5)*pi/180;
+peaH=(pea_ang+5)*pi/180;
+r2=[-190 -90;-90 0;0 90;90 190]*pi/180;
+
+for i=1:4
+    inds=find((ang3>=peaL(i))&(ang3<peaH(i)));
+    inds2=find((ang3>=r2(i,1))&(ang3<r2(i,2)));
+    actualpeaks(i)=MeanAngle(ang3(inds))*180/pi;
+    ls(i)=length(inds);
+    [y,xs]=AngHist(a2nest(inds)*180/pi,0:10:360,0,0);an=y./sum(y);
+    [y,xs]=AngHist(a2nest(inds2)*180/pi,0:10:360,0,0);ana=y./sum(y);
+    for k=1:size(lm,1)
+        [y,xs]=AngHist(a2lm(k).as(inds)*180/pi,0:10:360,0,0);
+        al(k,:)=y./sum(y);
+        [y,xs]=AngHist(a2lm(k).as(inds2)*180/pi,0:10:360,0,0);
+        ala(k,:)=y./sum(y);
+    end
+    if(pl)    figure(5)
+        subplot(2,2,pnum(i)),axis tight
+        plot(xs,[an;al])
+        figure(6)
+        subplot(2,2,pnum(i))
+        plot(xs,[ana;ala]),axis tight
+    end
+    % plot(xs,[an;al],xs,[ana;ala],':')
+    atn(i).is=find(abs(a2nest(inds2))<p_thr);
+    atn(i).n=length(atn(i).is);
+    atn(i).a=ang3(atn(i).is)*180/pi;
+    atn(i).medp=psirange(atn(i).is,4)*180/pi;
+    atn(i).ts=psirange(atn(i).is,6);
+    atn(i).r=psirange(atn(i).is,1)*180/pi;
+    for k=1:size(lm,1)
+        atl(k,i).is=find(abs(a2lm(k).as(inds2))<p_thr);
+        atl(k,i).n=length(atl(k,i).is);
+        atl(k,i).medp=psirange(atl(k,i).is,4)*180/pi;
+        atl(k,i).ts=psirange(atl(k,i).is,6);
+        atl(k,i).r=psirange(atl(k,i).is,1)*180/pi;
+        atl(k,i).a=ang3(atl(k,i).is)*180/pi;
+    end
+end
+
+odat.prn=prn;
+odat.prl=prl;
+odat.nor=nors;
+odat.lor=lors;
+odat.totpn=totpn;
+odat.totpl=[totpl];
+odat.atn=atn;
+odat.atl=atl;
+
+save(['processflightsec' fstr '.mat']);
+
+
+% tmp1=[];tmp2=[];tmp=[];
+% for i=1:4
+% tmp1=[tmp1 atl(1,i).medp'];
+% tmp2=[tmp2 atl(2,i).medp'];
+% tmp=[tmp atn(i).a];
+% end
+% figure(7),[y,xs]=AngHist(tmp);[y2,xs]=AngHist(tmp1);
+% plot(xs,y./sum(y),xs,y2./sum(y2),'r')
+%
+
+
+% [sorted,ord]=sort(psirangel(:,4),'descend')
+% figure(4)
+% for k=1:length(ord)
+%     i1=psirangel(ord(k),2);
+%     j1=psirangel(ord(k),3);
+%     t_s=fltsec(i1).fsec(j1).t;
+%     plot(t_s,[fltsec(i1).fsec(j1).so]'*180/pi, ...
+%         t_s,[fltsec(i1).fsec(j1).co]*180/pi,'r')
+%     pst=['psi range= ' int2str(round(psirangel(ord(k),1)*180/pi)) ...
+%          ' median dpsi= ' int2str(round(psirangel(ord(k),4)*180/pi)) ...
+%          ' mean dpsi= ' int2str(round(psirangel(ord(k),5)*180/pi))];
+%     title(pst)
+%     xst=[fltsec(i1).fn ' times ' num2str(t_s(1)) ' to ' num2str(t_s(end))];
+%     xlabel(xst);disp(xst)
+%     disp('press any key to continue')
+%     disp(' ');
+%     xlabel(xst);
+%     pause
+% end
+
+if(pl)
+    figure(3),
+    subplot(4,2,1),
+    AngHist(ang3*180/pi);xlabel('angle of straight lines')
+    subplot(4,2,2),
+    bar(-170:10:180,sum(p([1:36],:))),axis tight,xlabel('\psi all lines')
+    subplot(4,2,3),
+    bar(-170:10:180,sum(p([1:9],:))),axis tight,xlabel('\psi SW lines')
+    subplot(4,2,4),
+    bar(-170:10:180,sum(p([10:18],:))),axis tight,xlabel('\psi NW lines')
+    subplot(4,2,5),
+    bar(-170:10:180,sum(p([19:27],:))),axis tight,xlabel('\psi NE lines')
+    subplot(4,2,6),
+    bar(-170:10:180,sum(p([28:36],:))),axis tight,xlabel('\psi SE lines')
+    subplot(4,2,7),
+    plot(ang3*180/pi,mpsi(:,1)*180/pi,'.'),axis tight,ax=axis;
+    hold on;plot([-180 180],[-180 180],'r');axis(ax); hold off
+    xlabel('angle of line'),ylabel('mean \psi of each line')
+    subplot(4,2,8),hist(mpsi(:,2),40),axis tight,xlabel('length of mean \psi of each line')
+end
+
+function PlotFlightBits(fltsec,ts)
+
+PlotNestAndLMs(fltsec.lm,fltsec.lmw,[0 0]);
+hold on;
+load(fltsec.fn)
+if(exist('cmPerPix'))
+    [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+        ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fltsec.fn,t,OToNest,cmPerPix,compassDir);
+else
+    [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+        ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fltsec.fn,t,OToNest,[],[]);
+end
+
+allis=GetTimes(t,ts);
+[ep(:,1) ep(:,2)]=pol2cart(sOr',1.25);
+EndPt=-ep+Cents;
+plot(Cents(allis,1),Cents(allis,2),'r.')%,'MarkerSize',bsize)
+plot([Cents(allis,1) EndPt(allis,1)]',[Cents(allis,2) EndPt(allis,2)]','r')
+ks=[];
+for i=1:length(fltsec.fsec)
+    is=fltsec.fsec(i).is;
+    if(~isempty(intersect(is,allis)))
+        cs=fltsec.fsec(i).cs;
+        sOr=fltsec.fsec(i).so;
+        ep=fltsec.fsec(i).ep;
+        [ep(:,1) ep(:,2)]=pol2cart(sOr',1.25);
+        EndPt=-ep+cs;
+        plot(cs(:,1),cs(:,2),'b - o','MarkerSize',8)
+        plot([cs(:,1) EndPt(:,1)]',[cs(:,2) EndPt(:,2)]','b')
+        ks=[ks is];
+    end
+end
+axis equal
+hold off
+xlabel(fltsec.fn)
+
+
+% figure(2),
+

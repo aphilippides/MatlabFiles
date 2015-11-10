@@ -1,0 +1,9 @@
+function im=normaliseBrightness(im)
+r=im(:,:,1);
+g=im(:,:,2);
+b=im(:,:,3);
+[th,phi,rho]=cart2sph(double(r),double(g),double(b));
+[x,y,z]=sph2cart(th,phi,255);
+im(:,:,1)=uint8(x);
+im(:,:,2)=uint8(y);
+im(:,:,3)=uint8(z);

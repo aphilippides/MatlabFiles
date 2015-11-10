@@ -1,0 +1,68 @@
+function GetALVFromDB(fs)
+% dwork;
+% cd ../_Current/Linc/NoisePaper/noise_results\
+% cd 'learn run database/'
+
+% UnwrapImsDB;
+% [x,y]=GetPositions;
+% cd ../'env2 database/'
+% [x2,y2]=GetPositions;
+% plot(x,y,'rx',x2,y2,'gx'); 
+lrun=ParseGantryFile('../ev1/learn.txt');
+[r,t,finl,filled]=GetALVIms;
+for i=1:size(finl,1)
+    [obj(i).pos,obj(i).ws]=ObjectsFromFacets(finl(i,:));
+    [nob(i),alv(i,:)]=GetALVs(obj(i).pos-1.5,obj(i).ws);
+end
+hs=GetHeightsFromPos(obj);
+[alvth,r]=cart2pol(alv(:,1),alv(:,2));
+keyboard;
+
+function[raw,thresh,f,in]=GetALVIms(x,y)
+innR = 29; % Linc's 78-50+1 as my mat-files start at 50 
+outR = 36;
+% horizonRadius = 82;
+fs=dir('*.mat');
+for i=1:length(fs)
+    fn=fs(i).name;
+    load([fn(1:end-4) '.mat'])
+    OneD(i,:)=mean(unw(innR:outR,:));
+    raw(i,:)=SmoothWithEdges(OneD(i,:),4,2);
+end
+thresh=raw<=194;
+[f,in]=SmoothVision(thresh);
+
+function[ht]=GetHeightsFromPos(obj)
+innR = 29; % Linc's 78-50+1 as my mat-files start at 50 
+outR = 36;
+% horizonRadius = 82;
+fs=dir('*.mat');
+for i=1:length(fs)
+    fn=fs(i).name;
+    load([fn(1:end-4) '.mat'])
+    imagesc(unw)
+    hold on;
+    
+    for j=outR:size(unw,1)
+        s(j-outR+1,:)=SmoothWithEdges(unw(j,:),4,2);
+    end
+    for j=1:length(obj(i).pos)
+        w2=0.5*(obj(i).ws(j)-1);
+        ks=obj(i).pos(j)-w2:obj(i).pos(j)+w2;
+        b=find(ks<=0);
+        ks(b)=ks(b)+90;
+        hs
+        plot([obj(i).pos(j) obj(i).pos(j)]*4,[1 30],'r')
+    end
+    
+end
+
+function[x,y]=GetPositions(dn)
+if(nargin<1) fs=dir('*.jpg');
+else fs=dir([dn '\*.jpg']);
+end
+for i=1:length(fs)
+    fn=fs(i).name;
+    x(i)=str2num(fn(1:4));
+    y(i)=str2num(fn(6:9));
+end

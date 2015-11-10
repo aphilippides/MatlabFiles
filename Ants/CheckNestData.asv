@@ -1,0 +1,102 @@
+function[aRms,Checked]=CheckNestData(aRms,Checked,Cents,EPt,elips,...
+    FrameNum,WhichB,fn,vObj,dlim,nest,cmPerPix,fignum)
+
+if(isempty(aRms))
+    return;
+end
+
+% remove any that have already been checked
+toch=[FrameNum(aRms);WhichB(aRms)]';
+ism=ismember(toch,Checked(:,1:2),'rows');
+% toch=toch(~ism,:);
+aRms=aRms(~ism);
+if(isempty(aRms))
+    return;
+end
+
+% next step is to ensure that we don't remove bees over the nest
+
+% get distance to the nest of all bees and find ones within dlim of nest
+d2n=CartDist(Cents,nest)*cmPerPix;
+rmnear=aRms(d2n(aRms)<dlim)';
+
+figure(fignum)
+title([int2str(length(rmnear)) ' excluded bees ' int2str(dlim) 'cm from nest']);
+xlabel('press 0 to delete, 1 keep, 2 check')
+while 1
+    [x,y,b]=ginput(1);
+    if(isequal(b,48))
+        % 0 pressed: delete all
+        Checked=[Checked;FrameNum(rmnear)' WhichB(rmnear) 0];
+        return;
+    elseif(isequal(b,49))
+        % 1 pressed: keep all
+        aRms=setdiff(aRms,rmnear);
+        Checked=[Checked;FrameNum(rmnear) WhichB(rmnear) 1];
+        return;
+    elseif(isequal(b,50))
+        % 2 pressed: check each nest one
+        break
+    end
+end
+
+% now check each one that is within 3 cm of nest
+% and not already checked
+for ind=1:length(rmnear)
+    i=rmnear(ind);
+    
+    % *** the idea with the commented if statement etc 
+    % below was that if there are other bees
+    % at that point in time then they should be removed.
+    % this could be added back in but would be best done 
+    % below where I've written HERE
+    
+    %     goods=setdiff(1:length(WhichB),aRms);
+    %     if(~ismember(FrameNum(i),FrameNum(goods)))
+    % show frame
+    figure(fignum)
+    fr=floor(0.5*(FrameNum(i)+1));
+    f=MyAviRead(fn,fr,vObj);
+    imagesc(f);
+    plotb(i,Cents,EPt,[],elips,'g')
+    hold on;
+    MyCircle(nest(1),nest(2),dlim/cmPerPix,'r')
+    hold off;
+    title(['keep frame ' int2str(FrameNum(i)) '?'])
+    disp(' ');
+    while 1
+        xlabel('press y if this is a bee, n to remove');
+        [x,y,b]=ginput(1);
+        if(isequal(b,121))
+            % if y is pressed; keep the frame
+            % one could remove all other bees that are 
+            % at this time-frame at this point HERE
+            aRms=setdiff(aRms,i);
+            Checked=[Checked;FrameNum(i) WhichB(i) 1];
+            break;
+        elseif(isequal(b,110))
+            % if n is pressed; remove the frame
+            Checked=[Checked;FrameNum(i) WhichB(i) 0];
+            break;
+        end
+    end
+%     else
+%         Checked=[Checked;FrameNum(i) WhichB(i) 0];
+%     end
+end
+end
+
+function plotb(is,c1,e1,e2,ell,col)
+bw=75;
+hold on;
+plot(e1(is,1),e1(is,2),[col '.'])%,e2(is,1),e2(is,2),'w.')
+plot([c1(is,1) e1(is,1)]',[c1(is,2) e1(is,2)]',col)
+% plot([c1(is,1) e2(is,1)]',[c1(is,2) e2(is,2)]','w')
+for i=is
+    plot(ell(i).elips(:,1),ell(i).elips(:,2),col)
+end
+a1=round(mean(c1(is,:),1)-bw);
+a2=round(mean(c1(is,:),1)+bw);
+axis([a1(1) a2(1) a1(2) a2(2)])
+hold off
+end

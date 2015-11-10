@@ -1,0 +1,47 @@
+% function[n]=ForceNumericInput(str,notempty,oneval)
+%
+% function uses input but forces the user to put a numeric value or vector
+%
+% if notempty =1 (default 0) make sure input is not empty
+% if oneval =1 (default 0) make sure input is a single value not a vector
+% 
+% only issue is what to do about i/j ie imaginary; currently not a number
+
+function[n]=ForceNumericInput(str,notempty,oneval)
+
+if(nargin<2)
+    notempty=0;
+end
+
+while 1
+    s=input(str,'s');
+    if(isempty(s))
+        if(notempty==1)
+            disp('empty input not accepted')
+        else
+            n=[];
+            break;
+        end
+    elseif(isequal(s,'i'))
+        disp('letter i not accepted')
+        % ignore i
+    elseif(isequal(s,'j'))
+        disp('letter j not accepted')
+        % ignore i
+    else
+        n=str2num(s);
+        if(isempty(n))
+            if(oneval)              
+                disp('enter single numbers only')
+            else
+                disp('enter numbers vectors/matrices only eg 1, 1:3, [1 4], [1;7]')
+            end
+        else
+            if(oneval) 
+                if(isequal(size(n),[1,1]))
+                disp('enter single numbers only')
+
+            break;
+        end
+    end
+end

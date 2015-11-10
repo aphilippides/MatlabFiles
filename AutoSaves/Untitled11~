@@ -1,0 +1,37 @@
+function FindLimits
+
+
+
+function[t,c]=FindTimeToConc(SConc,C,diam,B,d)
+out=diam/2;
+if(SConc<=C) t=-1;c=; return; end; 
+% Find far end
+Endt=B;
+EndConc=SConc;
+while(EndConc>=C)
+    Endt=Endt+B;
+    [EndConc Err Limit]=Tube(d,Endtt,out,B,5e-3,100);
+    if(Err./EndConc>0.01)
+        ProblemDiam=d
+        pause
+    end
+    EndConc=EndConc*0.00331;
+end
+
+Startt=B;
+RelErr=(Endt-Startt)*2/(Endt+Startt);
+while(RelErr>0.01)
+    prop=(C-StartConc)/(EndConc-StartConc);
+    midt=Startt+prop(Endt-Startt)
+    midc=Tube(d,midt,out,B,5e-3,100)*0.00331
+    if(abs(midc-C)<0.005*C)
+        RelErr=0;
+        t=midt;
+        c=midc;
+    if(midc>C)
+        Startt=midt;
+        StartC=midc;
+    else
+        Endt=midt;
+        EndC=midc;
+    end

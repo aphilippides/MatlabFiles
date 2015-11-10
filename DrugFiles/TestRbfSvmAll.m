@@ -1,0 +1,10 @@
+function[Fit,TestFit]=TestRbfSvmAll(Ind,TrainS,TestS,Thresh,Equal)
+Used=[find(Ind(4:end-1)) 217];
+NonZeros=[1 [find(Ind(4:end-1))+1] 218];
+Gamma=Ind(1);
+C=Ind(2);
+Scale=Ind(3);
+TrainSet=TrainS(:,NonZeros);
+TestSet=TestS(:,NonZeros);
+[Fit]=RbfSVM_GA(Scale,Gamma,C,TrainSet,TestSet,Equal,Thresh,0,Used);
+[TestFit]=RbfSVM_GA(Scale,Gamma,C,TrainSet,TestSet,Equal,Thresh,1,Used);

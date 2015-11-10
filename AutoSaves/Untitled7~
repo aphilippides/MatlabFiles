@@ -1,0 +1,15 @@
+function teach10(opt)
+
+if(opt==1) GradDescent;
+elseif(opt==2) HillClimb;
+else GA;
+end
+
+function GradDescent
+
+spt=[0.1,0.2];
+ezmesh('x+y')
+hold on;
+for i = 1:20
+    spt=spt+0.1*[1 1];
+    plot

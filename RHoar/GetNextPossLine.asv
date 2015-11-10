@@ -1,0 +1,22 @@
+function[ml]=GetNextPossLine(l1line,LastLine,l1,l2,i,fib,upline)
+
+if(isempty(LastLine)) 
+    ml=[];
+    return;
+end
+
+svt=l1line.p1new(1);
+if(upline)
+[sval svalt]=min(l1(svt:i));
+newl=[svalt+svt-1 sval buy(svalt+svt-1)];
+if(newl(2)>LastLine(2))
+    ml=(1-fib)*newl+fib*LastLine;
+else
+    ml=(1-fib)*newl+fib*LastLine;
+end
+ml(1)=newl(1);
+val=ml(2);
+if(l2>val) ml(4)=1;
+elseif(l1<val) ml(4)=0;
+else ml(4)=-1;
+end

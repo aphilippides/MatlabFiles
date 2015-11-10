@@ -1,0 +1,10 @@
+
+function[x1,x2,y1,y2]=Constrain2BBox(b,im)
+
+[h,w]=size(im);
+x1=max(1,floor(b(1)));
+y1=max(1,floor(b(2)));
+x2=min(w,ceil(b(1)+b(3)));
+y2=min(h,ceil(b(2)+b(4)));
+c_im=im(y1:y2,x1:x2)
+

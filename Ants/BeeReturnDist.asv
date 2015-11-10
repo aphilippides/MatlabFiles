@@ -1,0 +1,41 @@
+function BeeReturnDist(ds)
+fn='DistLoopdataOuts.mat';
+if(~isfile(fn)) DistanceLoops; end
+load(fn); 
+
+if(nargin<1) ds=[0:10:60]; end;
+xs=-50:2.5:50;
+ys=-50:2.5:50;
+for i=1:length(ds)-1
+    
+    dst=[ma2miP.dstart];
+    inds=find((dst>=ds(i))&(dst<ds(i+1)));
+    cs=[];maxs=[];mins=[];
+    for j=inds  
+        cs=[cs;ma2miP(j).path]; 
+        maxs=[maxs;ma2miP(j).path(1,:)];
+        mins=[mins;ma2miP(j).path(end,:)];
+    end
+    [d,a,b,x1,y]=Density2D(cs(:,1),cs(:,2),xs,ys);
+%     pts(i).cs=cs;
+    figure(1)
+    pcolor(x1,y,max(d(:))-d),shading flat
+    colormap gray
+    hold on,
+    PlotNestAndLMs(LM,LMWid,[0 0],0);    
+    h=MyCircle(0,0,ds(i+1),'w');
+    set(h,'LineWidth',2)
+    hold off
+%         contourf(x1,y,max(d(:))-d)
+    figure(2)
+    dds=[CartDist(cs)]; 
+    dma=CartDist(maxs); dmi=CartDist(mins);
+    [y,x]=hist(dds,0:1:50);y=y/sum(y);
+    [ymi,x]=hist(dma,0:1:50);
+    [yma,x]=hist(dmi,0:1:50);
+    plot(x,y,x,yma,'k--',x,ymi,'r:d'),axis tight
+%     colormap gray
+disp(' ');
+    disp('press any key to continue');
+    pause
+end

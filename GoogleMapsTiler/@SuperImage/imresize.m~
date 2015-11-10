@@ -1,0 +1,28 @@
+function bigim = imresize(obj,scale)
+if length(scale)==1
+    scale = scale * obj.pix;
+else
+    if isnan(scale(1))
+        scale(1) = round(scale(2)*obj.pix(1)/obj.pix(2));
+    end
+    if isnan(scale(2))
+        scale(2) = round(scale(1)*obj.pix(2)/obj.pix(1));
+    end
+end
+imscale = round(obj.ImPix .* scale ./ obj.pix);
+imendscale = round(mod(obj.pix,obj.ImPix) .* scale ./obj.pix
+scale = imscale .* (obj.Units-1) + imendscale;
+
+bigim = zeros(scale,'uint8');
+dd = gm_datadir;
+for i = obj.Units
+    starti = (i-1)*imscale(1);
+    ind1 = (starti+1):min(scale(1),starti+imscale(1));
+    for j = obj.Units
+        startj = (j-1)*imscale(2);
+        ind2 = (startj+1):min(scale(2),startj+imscale(2));
+        
+        load(sprintf('%s/%s_%04d,%04d',dd,obj.DataLabel,i,j),'im');
+        bigim(ind1,ind2) = imresize(im,imscale);
+    end
+end

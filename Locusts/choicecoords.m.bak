@@ -1,0 +1,30 @@
+function choicecoords
+
+% FList12=dir('*.MP4');
+FList12=dir('PIC_0434.MP4');
+is=[1:length(FList12)];
+
+FullFrame=1;
+for i=is
+%     d=ProcessBeeFileName2012(FList12(i).name);
+   %  fn=[s(i).name(1:end-4) '_ProgWhole.mat'];
+    fn=[FList12(i).name(1:end-4) '_Prog.mat'];    
+    vidfn=[FList12(i).name];
+    maskfn=[vidfn(1:end-4) 'NestLMData.mat'];
+    
+    %(1:end-4) '.avi'];    
+    if (~isfile(fn))
+
+        [v,vobj]=VideoReaderType(vidfn);
+        if(~isfile(maskfn))
+            GetMaskChoice(vidfn,vobj,maskfn);
+        end
+        for thr=[80:20:120]
+            TrackAntChoice(vidfn,FullFrame,vobj,thr,1:5:1000);
+        end
+        % This bit tests different thresholds
+%          for th=[8 10 12]%Ts
+%              TrackAntPathInt(vidfn,FullFrame,th);
+%          end
+    end  
+end

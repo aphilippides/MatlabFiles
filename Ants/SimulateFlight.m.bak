@@ -1,0 +1,761 @@
+function SimulateFlight
+% SimulateLoop
+% SimulateAllLoops
+% 
+% SimulateZZ
+SimulateLoopPhase
+SimulateAllZZs
+
+
+function SimulateAllLoops
+
+load loopstatstemp
+fs='SimulateLoopParams.mat';
+if(~isfile(fs))
+    SimulateLoop;
+end
+load(fs)
+ea=[];
+eb=[];
+for i=1:length(loops)
+    ps=find(loops(i).Picked);
+    for j=1:length(ps)
+        [e1,e2]=SimulateRealPath(loops,i,ps(j),f2c,f2a,tdiv,xp,rcoc,rcoa);
+        if(~isempty(e1))
+            ea=[ea;[e1 i j]];
+            eb=[eb;[e2 i j]];
+        end
+%         disp('press any key to continue: ')
+%         pause;
+    end
+end
+keyboard
+
+function SimulateAllZZs
+
+load processzigzagsin
+fs='SimulateZZParams.mat';
+if(~isfile(fs))
+    SimulateZZ;
+end
+load(fs)
+ea=[];
+eb=[];
+for i=1:length(fltsec)
+    ps=(fltsec(i).fsec);
+    for j=1:length(ps)
+        [e1,e2]=SimulateRealZZ(fltsec,i,j,f2c,f2a,tdiv,xp,rcoc,rcoa);
+        if(~isempty(e1))
+            ea=[ea;[e1 i j]];
+            eb=[eb;[e2 i j]];
+        end
+%         disp('press any key to continue: ')
+%         pause;
+    end
+end
+keyboard
+
+
+function[x,y,f,o2n]=SimulatePath(st,f2n,sp,t)
+x(1)=st(1);
+y(1)=st(2);
+
+% flight 1
+% 2 19; 2 21; 3 3; 4 10;6 12; 7 25;8 23; 8 38
+% flight 10
+% 16 20; 16 30; 17 28 and the one before
+for i=1:(length(t)-1)
+    o2n(i)=mod(cart2pol(-x(i),-y(i))-4.9393,2*pi);
+    f(i)=mod(f2n(i)+o2n(i),2*pi);
+    f(i)=mod(f(i)+4.9393,2*pi);
+    td=t(i+1)-t(i);
+    [dx,dy]=pol2cart(f(i),sp(i)*td);
+    x(i+1)=x(i)+dx;
+    y(i+1)=y(i)+dy;
+end
+i=length(t);
+o2n(i)=cart2pol(x(i),y(i));
+f(i)=mod(f2n(i)+o2n(i),2*pi);
+
+function SimulateZZ
+
+[psicw,psiaw,f2ncw,f2naw,cocw,coaw,tcw,taw,rcocw,rcoaw,...
+    spcw,spaw,rspcw,rspaw]=ZZPsi;
+
+divi=-720:60:720;
+divi=-30:30:540;
+tdiv=0:0.1:1;
+thd=20;
+figure(3)
+[Df2ncw,xs,ys,xps,yps]=Density2D(f2ncw*180/pi,tcw,[-180:thd:190]-thd/2,tdiv);
+[Df2naw,xs,ys,xps,yps]=Density2D(f2naw*180/pi,taw,[-180:thd:190]-thd/2,tdiv);
+[datc,xp]=StatsOverX(tcw,f2ncw,tdiv);
+[data,xp]=StatsOverX(taw,f2naw,tdiv);
+f2c=[datc.meang];
+f2a=[data.meang];
+subplot(2,2,1),contourf(xps,yps,Df2ncw);hold on;plot(f2c*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+subplot(2,2,2),contourf(xps,yps,Df2naw);hold on;plot(f2a*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+[Dspcw,xs,ys,xps,yps]=Density2D(rspcw,tcw,tdiv,tdiv);
+[Dspaw,xs,ys,xps,yps]=Density2D(rspaw,taw,tdiv,tdiv);
+[dspc,xp]=StatsOverX(tcw,rspcw,tdiv);
+[dspa,xp]=StatsOverX(taw,rspaw,tdiv);
+spc=[dspc.med].^1;
+spa=[dspa.med].^1;
+subplot(2,2,3),contourf(xps,yps,Dspcw);hold on;plot(spc,xp,'w','LineWidth',2);hold off;axis tight;
+subplot(2,2,4),contourf(xps,yps,Dspaw);hold on;plot(spa,xp,'w','LineWidth',2);hold off;axis tight;
+
+figure(7),
+rcocw=mod(rcocw,2*pi);
+rcoaw=mod(rcoaw,2*pi);
+[Df2ncw,xs,ys,xps,yps]=Density2D(rcocw*180/pi,tcw,[0:thd:370]-thd/2,tdiv);
+[Df2naw,xs,ys,xps,yps]=Density2D(rcoaw*180/pi,taw,[0:thd:370]-thd/2,tdiv);
+[datc,xp]=StatsOverX(tcw,rcocw,tdiv);
+[data,xp]=StatsOverX(taw,rcoaw,tdiv);
+rcoc=mod([datc.meang],2*pi);rcoc(1)=0;
+rcoa=mod([data.meang],2*pi);rcoa(1)=0;
+subplot(2,2,1),contourf(xps,yps(2:end),Df2ncw(2:end,:));hold on;plot(rcoc*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+subplot(2,2,2),contourf(xps,yps(2:end),Df2naw(2:end,:));hold on;plot(rcoa*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+
+
+spa=spa*50;spc=spc*50;
+
+figure(4)
+stp=[50 50];
+[xc,yc,f,o2n]=SimulatePath(stp,f2c,ones(size(f2c))*median(spc),xp);
+[xcs,ycs,f,o2n]=SimulatePath(stp,f2c,spc,xp);
+[xa,ya,f,o2n]=SimulatePath([xc(end) yc(end)],f2a,ones(size(f2a))*median(spa),xp);
+[xas,yas,f,o2n]=SimulatePath([xcs(end) ycs(end)],f2a,spa,xp);
+subplot(2,1,1),plot([xc xa],[yc ya],'r:',[xcs xas],[ycs yas])
+axis equal,set(gca,'YDir','reverse')
+% subplot(2,2,2),plot(xa,ya,'r:',xas,yas),axis equal
+stp=[-50 50];
+[xc,yc,f,o2n]=SimulatePath(stp,f2c,ones(size(f2c))*median(spc),xp);
+[xcs,ycs,f,o2n]=SimulatePath(stp,f2c,spc,xp);
+[xa,ya,f,o2n]=SimulatePath([xc(end) yc(end)],f2a,ones(size(f2a))*median(spa),xp);
+[xas,yas,f,o2n]=SimulatePath([xcs(end) ycs(end)],f2a,spa,xp);
+subplot(2,1,2),plot([xc xa],[yc ya],'r:',[xcs xas],[ycs yas])
+axis equal,set(gca,'YDir','reverse')
+% subplot(2,2,4),plot(xa,ya,'r:',xas,yas),axis equal
+save SimulateZZParams f2a f2c rcoc rcoa xp tdiv
+
+
+function[err,errs]=SimulateRealZZ(zz,i,j,f2c,f2a,tdiv,xp,rcoc,rcoa)
+
+co=zz(i).fsec(j).co;
+o2n=zz(i).o2n;
+izz=zz(i).fsec(j).is;
+if(length(izz)<4)
+    err=[];errs=[];
+    return
+end    
+
+cs=zz(i).cs;
+t=zz(i).t;
+v1=MyGradient(cs(:,1),t);
+v2=MyGradient(cs(:,2),t);
+[Cent_Os,sp]=cart2pol(v1,v2);
+co=Cent_Os-4.9393;
+% f2n=AngularDifference(co,o2n(1:end-1));
+f2n=AngularDifference(co,o2n);
+
+ist=[izz(1)-1 izz izz(end)+1];
+if(ist(end)>length(t))
+    err=[];errs=[];
+    return
+end
+[x,y,f,o2n]=SimulatePath2(mean(cs([izz(1) izz(1)-1],:)),f2n(izz),sp(izz),t(ist));
+[rxc,ryc]=SimulatePathC(cs(izz(1),:),co(izz),sp(izz),t(ist));
+% [x,y,f,o2n]=SimulatePath2((cs(is(1)-1,:)),f2n(is),sp(is),t(ist));
+figure(5),
+subplot(2,1,1),
+plot(cs(izz,1),cs(izz,2),rxc,ryc,'r:'),axis equal,axis tight
+title(['flight ' int2str(i) '; zz ' int2str(j)]);
+subplot(2,1,2),plot(cs(izz,1),cs(izz,2),rxc,ryc,'r:'),axis equal,axis tight
+
+relt=zz(i).fsec(j).reltDang2;
+sps=find(relt==0);
+eps=find(relt==1);
+if(eps(1)<=sps(1)) eps=eps(2:end); end;
+if(eps(end)<=sps(end)) sps=sps(1:end-1); end;
+figure(6)
+for k=1:length(sps)
+    is=izz(sps(k):eps(k));
+    tdi=tdiv*(t(is(end))-t(is(1)));
+    % xp=0.05:.1:.95;
+    t_is=xp*(t(is(end))-t(is(1)))+t(is(1));
+    spi=interp1(t(is),sp(is),t_is);
+    spx=interp1(t(is),cs(is,1),tdi+t(is(1)));
+    spy=interp1(t(is),cs(is,2),tdi+t(is(1)));
+
+    rcoc=rcoc+co(is(1));
+    rcoa=rcoa+co(is(1));
+    [h,ad1 ad2] = LoopHandednes(co(is));
+    if(ad2(1)<0)
+        h=-1;
+        cstr='anti-clock';
+    else
+        h=1;
+        cstr='clock';
+    end
+
+    if(h==-1)
+        [xc,yc]=SimulatePath2(cs(is(1),:),f2a,spi,tdi);
+        [rxc,ryc]=SimulatePathC(cs(is(1),:),rcoa,spi,tdi);
+        subplot(2,1,1),plot(cs(is,1),cs(is,2),xc,yc,'r:'),
+        axis equal,axis tight,Setbox,hold on
+        subplot(2,1,2),plot(cs(is,1),cs(is,2),rxc,ryc,'r:'),
+        axis equal,axis tight,Setbox,hold on
+    else
+        [xa,ya]=SimulatePath2(cs(is(1),:),f2c,spi,tdi);
+        [rxa,rya]=SimulatePathC(cs(is(1),:),rcoc,spi,tdi);
+        subplot(2,1,1),plot(cs(is,1),cs(is,2),xa,ya,'r:')
+        axis equal,axis tight,Setbox,hold on
+        subplot(2,1,2),plot(cs(is,1),cs(is,2),rxa,rya,'r:')
+        axis equal,axis tight,Setbox,hold on
+    end
+end
+subplot(2,1,1),hold off;%plot(cs(is,1),cs(is,2),xa,ya,'r:'),axis equal,axis tight,Setbox
+xlabel('f dir rel to nest')
+title(['flight ' int2str(i) '; zz ' int2str(j)]);
+subplot(2,1,2),hold off;%plot(cs(is,1),cs(is,2),rxa,rya,'r:'),axis equal,axis tight,Setbox
+xlabel('f dir rel to compass')
+title(['Distance ' num2str(CartDist(cs(izz(1),:)))]);
+            
+
+% exc=sqrt(sum((xc-spx).^2+(yc-spy).^2));
+% exa=sqrt(sum((xa-spx).^2+(ya-spy).^2));
+% erc=sqrt(sum((rxc-spx).^2+(ryc-spy).^2));
+% era=sqrt(sum((rxa-spx).^2+(rya-spy).^2));
+% 
+h=1;
+errs=[];err=[];%h exc exa erc era];
+% if(h==1) err=[exc erc];
+% else err=[exa era];
+% end
+
+
+function[err,errs]=SimulateRealPath(loops,i,j,f2c,f2a,tdiv,xp,rcoc,rcoa)
+
+co=loops(i).Co;
+o2n=loops(i).o2n;
+is=loops(i).loop(j).is
+cs=loops(i).cs;
+t=loops(i).t;
+v1=MyGradient(cs(:,1),t);
+v2=MyGradient(cs(:,2),t);
+[h] = LoopHandednes(co(is));
+% v1=diff(cs(:,1));
+% v2=diff(cs(:,2));
+
+[Cent_Os,sp]=cart2pol(v1,v2);
+% co=Cent_Os-4.9393;
+% f2n=AngularDifference(co,o2n(1:end-1));
+% f2n=AngularDifference(co,o2n);
+f2n=loops(i).f2n;
+% [x,y,f,o2n]=SimulatePath(cs(is(1),:),f2n(is+1),sp(is),t(is));
+% [x,y,f,o2n]=SimulatePath(cs(is(1),:),f2n(is),sp(is)*50,t(is));
+ist=[is(1)-1 is is(end)+1];
+if(ist(end)>length(t))
+    err=[];errs=[];
+    return
+end
+[x,y,f,o2n]=SimulatePath2(mean(cs([is(1) is(1)-1],:)),f2n(is),sp(is),t(ist));
+    [rxc,ryc]=SimulatePathC(cs(is(1),:),co(is),sp(is),t(ist));
+% [x,y,f,o2n]=SimulatePath2((cs(is(1)-1,:)),f2n(is),sp(is),t(ist));
+figure(5),
+subplot(2,1,1),
+plot(cs(is,1),cs(is,2),rxc,ryc,'r:'),axis equal,axis tight
+title(['flight ' int2str(i) '; loop ' int2str(j)]);
+subplot(2,1,2),plot(cs(is,1),cs(is,2),rxc,ryc,'r:'),axis equal,axis tight
+
+% plot(t(is),sp(is)),axis tight
+
+tdiv=tdiv*(t(is(end))-t(is(1)));
+% xp=0.05:.1:.95;
+t_is=xp*(t(is(end))-t(is(1)))+t(is(1));
+spi=interp1(t(is),sp(is),t_is);
+spx=interp1(t(is),cs(is,1),tdiv+t(is(1)));
+spy=interp1(t(is),cs(is,2),tdiv+t(is(1)));
+
+rcoc=rcoc+co(is(1));
+rcoa=rcoa+co(is(1));
+% if(h==1) 
+    [xc,yc]=SimulatePath2(cs(is(1),:),f2a,spi,tdiv);
+    [rxc,ryc]=SimulatePathC(cs(is(1),:),rcoa,spi,tdiv);
+%     else
+        [xa,ya]=SimulatePath2(cs(is(1),:),f2c,spi,tdiv);
+        [rxa,rya]=SimulatePathC(cs(is(1),:),rcoc,spi,tdiv);
+% end
+% [h [f2n(is(1)) f2a(1) f2c(1)]*180/pi]
+
+exc=sqrt(sum((xc-spx).^2+(yc-spy).^2));
+exa=sqrt(sum((xa-spx).^2+(ya-spy).^2));
+erc=sqrt(sum((rxc-spx).^2+(ryc-spy).^2));
+era=sqrt(sum((rxa-spx).^2+(rya-spy).^2));
+
+errs=[h exc exa erc era];
+if(h==1) err=[exc erc];
+else err=[exa era];
+end
+
+figure(6),
+if(h==1)
+subplot(2,1,1),plot(cs(is,1),cs(is,2),xc,yc,'r:'),axis equal,axis tight,Setbox
+xlabel('f dir rel to nest')
+title(['flight ' int2str(i) '; loop ' int2str(j)]);
+subplot(2,1,2),plot(cs(is,1),cs(is,2),rxc,ryc,'r:'),axis equal,axis tight,Setbox
+xlabel('f dir rel to compass')
+title(['Distance ' num2str(CartDist(cs(is(1),:)))]);
+else
+subplot(2,1,1),plot(cs(is,1),cs(is,2),xa,ya,'r:'),axis equal,axis tight,Setbox
+xlabel('f dir rel to nest')
+title(['flight ' int2str(i) '; loop ' int2str(j)]);
+subplot(2,1,2),plot(cs(is,1),cs(is,2),rxa,rya,'r:'),axis equal,axis tight,Setbox
+xlabel('f dir rel to compass')
+title(['Distance ' num2str(CartDist(cs(is(1),:)))]);
+end
+% subplot(2,2,3),plot(cs(is,1),cs(is,2),rxc,ryc,'r:'),axis equal,axis tight,Setbox
+% subplot(2,2,4),plot(cs(is,1),cs(is,2),rxa,rya,'r:'),axis equal,axis tight,Setbox
+
+
+
+
+rcoc(1)=0;
+% keyboard;
+
+function[x,y,f,o2n]=SimulatePath2(st,f2n,sp,t)
+x(1)=st(1);
+y(1)=st(2);
+
+for i=1:(length(f2n))
+    o2n(i)=mod(cart2pol(-x(i),-y(i))-4.9393,2*pi);
+    f(i)=mod(f2n(i)+o2n(i),2*pi);
+    f(i)=mod(f(i)+4.9393,2*pi);
+%     td=0.5*(t(i+2)-t(i));
+    td=(t(i+1)-t(i));
+    [dx,dy]=pol2cart(f(i),sp(i)*td);
+    x(i+1)=x(i)+dx;
+    y(i+1)=y(i)+dy;
+end
+% i=length(t);
+% o2n(i)=cart2pol(x(i),y(i));
+f(i)=mod(f2n(i)+o2n(i),2*pi);
+
+
+function[x,y,o2n]=SimulatePathC(st,f,sp,t)
+x(1)=st(1);
+y(1)=st(2);
+
+for i=1:(length(f))
+    td=(t(i+1)-t(i));
+    [dx,dy]=pol2cart(f(i)+4.9393,sp(i)*td);
+    x(i+1)=x(i)+dx;
+    y(i+1)=y(i)+dy;
+end
+% i=length(t);
+% o2n(i)=cart2pol(x(i),y(i));
+
+
+
+function SimulateLoopPhase
+
+% [psicw,psiaw,f2ncw,f2naw,cocw,coaw,tcw,taw,rcocw,rcoaw,spcw,spaw,rfcw,rfaw]=LoopPsi;
+% save looppsitemp;
+load temp2ELoopPhaseDataAll;
+
+figure(2)
+[df,dc,dr,dfr,dcr,drr,dftp,dctp,drtp]=getparams(PhDat.dat1,PhDat.m1);
+[df,dc,dr,dfr,dcr,drr,dftp,dctp,drtp]=getparams([PhDat.dat1 PhDat.dat2],[PhDat.m1;PhDat.m2]);
+hold on;
+figure(8)
+[dfa,dca,dra,dfra,dcra,drra,dftpa,dctpa,drtpa]=getparams(PhDat.dat3,PhDat.m3);
+[dfa,dca,dra,dfra,dcra,drra,dftpa,dctpa,drtpa]=getparams([PhDat.dat3 PhDat.dat4],[PhDat.m3;PhDat.m4]);
+
+load temp2EZZPhaseDataAll;
+[zf,zc,zr,zfr,zcr,zrr,zftp,zctp,zrtp]=getparams(PhDat.dat1,PhDat.m1);
+[zf,zc,zr,zfr,zcr,zrr,zftp,zctp,zrtp]=getparams([PhDat.dat1 PhDat.dat2],[PhDat.m1;PhDat.m2]);
+[zfa,zca,zra,zfra,zcra,zrra,zftpa,zctpa,zrtpa]=getparams(PhDat.dat3,PhDat.m3);
+[zfa,zca,zra,zfra,zcra,zrra,zftpa,zctpa,zrtpa]=getparams([PhDat.dat3 PhDat.dat4],[PhDat.m3;PhDat.m4]);
+
+figure(1)
+plot([df.a]*180/pi,[df.t],'b',[zf.a]*180/pi,[zf.t],'r:')%,...
+   % [dfa.a]*180/pi,[dfa.t],'b',[zfa.a]*180/pi,[zfa.t],'r:')
+axis tight;
+figure(2)
+plot([dfr.a]*180/pi,[dfr.t],'b',[zfr.a]*180/pi,[zfr.t],'r:',...
+    [dfra.a]*180/pi,[dfra.t],'b',[zfra.a]*180/pi,[zfra.t],'r:')
+% plot([dcc.a]*180/pi,[dcc.t],[zcc.a]*180/pi,[zcc.t],'r:')
+axis tight;
+figure(3)
+plot([dftp.a]*180/pi,[dftp.t],'b',[zftp.a]*180/pi,[zftp.t],'r:',...%)
+    [dftpa.a]*180/pi,[dftpa.t],'b',[zftpa.a]*180/pi,[zftpa.t],'r:')
+% plot([drc.a]*180/pi,[drc.t],[zrc.a]*180/pi,[zrc.t],'r:')
+axis tight;
+
+figure(4),contourf(dfr.xps,dfr.yps,max(dfr.D,dfra.D),[0:10:80]/1);
+hold on;plot(dfr.a*180/pi,dfr.t,'w',dfra.a*180/pi,dfra.t,'w','LineWidth',2);hold off;axis tight;
+ylim([-0.4 0.3])
+figure(5),contourf(dftp.xps,dftp.yps,max(dftp.D,dftpa.D),[0:8:64]);
+figure(5),contourf(dftp.xps,dftp.yps,max(dftp.D,dftpa.D),[0:15:100]);
+hold on;plot(dftp.a*180/pi,dftp.t,'w',dftpa.a*180/pi,dftpa.t,'w','LineWidth',2);hold off;axis tight;
+ylim([-0.9 0.5])
+figure(6),contourf(zfr.xps,zfr.yps,max(zfr.D,zfra.D),[0:3:21]/2);
+hold on;plot(zfr.a*180/pi,zfr.t,'w',zfra.a*180/pi,zfra.t,'w','LineWidth',2);hold off;axis tight;
+ylim([-0.4 0.3])
+figure(7),contourf(zftp.xps,zftp.yps,max(zftp.D,zftpa.D),[0:4:28])%,[0:4:28]);
+hold on;plot(zftp.a*180/pi,zftp.t,'w',zftpa.a*180/pi,zftpa.t,'w','LineWidth',2);hold off;axis tight;
+ylim([-0.9 0.5])
+% subplot(2,2,4),contourf(xps,yps,Dspaw);hold on;plot(spa,xp,'w','LineWidth',2);hold off;axis tight;
+
+
+divi=-720:60:720;
+divi=-30:30:540;
+tdiv=0:0.1:1;
+% tdiv=-0.05:0.1:1.05;
+
+return
+figure(7),
+rcocw=mod(rcocw,2*pi);
+rcoaw=mod(rcoaw,2*pi);
+% rfcw=mod(rfcw,2*pi);
+% rfaw=mod(rfaw,2*pi);
+
+% load looppsitemp
+% [Dspcw,xs,ys,xps,yps]=Density2D(spcw,tcw,tdiv,tdiv);
+% [Dspaw,xs,ys,xps,yps]=Density2D(spaw,taw,tdiv,tdiv);
+% [dspc,xp]=StatsOverX(tcw,spcw,tdiv);
+% [dspa,xp]=StatsOverX(taw,spaw,tdiv);
+spc=1;%[dspc.med].^2;
+spa=1;%[dspa.med].^3;
+% spc=[dspc.med];
+% spa=[dspa.med];
+
+% [dum,maxind]=max(Dspcw');
+% spc=xps(maxind);
+% [dum,maxind]=max(Dspaw');
+% spa=xps(maxind);
+% 
+% subplot(2,2,3),contourf(xps,yps,Dspcw);hold on;plot(spc,xp,'w','LineWidth',2);hold off;axis tight;
+% subplot(2,2,4),contourf(xps,yps,Dspaw);hold on;plot(spa,xp,'w','LineWidth',2);hold off;axis tight;
+
+spa=spa*50;spc=spc*50;
+
+stp=[5 -5];
+[xa,ya,f,o2n]=SimulatePath(stp,f2a,ones(size(f2a))*median(spa),xp);
+[xc,yc,f,o2n]=SimulatePath(stp,f2c,ones(size(f2c))*median(spc),xp);
+[xas,yas,f,o2n]=SimulatePath(stp,f2a,spa,xp);
+[xcs,ycs,f,o2n]=SimulatePath(stp,f2c,spc,xp);
+figure(2)
+subplot(2,2,1),plot(xc,yc,'r:',xcs,ycs),axis equal
+subplot(2,2,2),plot(xa,ya,'r:',xas,yas),axis equal
+
+stp=[15 50];
+[xa,ya,f,o2n]=SimulatePath(stp,f2a,ones(size(f2a))*median(spa),xp);
+[xc,yc,f,o2n]=SimulatePath(stp,f2c,ones(size(f2c))*median(spc),xp);
+[xas,yas,f,o2n]=SimulatePath(stp,f2a,spa,xp);
+[xcs,ycs,f,o2n]=SimulatePath(stp,f2c,spc,xp);
+subplot(2,2,3),plot(xc,yc,'r:',xcs,ycs),axis equal
+subplot(2,2,4),plot(xa,ya,'r:',xas,yas),axis equal
+
+save SimulateLoopParamsPh f2a f2c rcoc rcoa xp tdiv
+
+function[df,dc,dr,dfr,dcr,drr,dftp,dctp,drtp]=getparams(dat,m)
+relf=[];relc=[];relt100=[];relt60=[];tts=[];cc=[];
+l1=[];len=[];len2tp=[];relt=[];relt1=[];relt2=[];l2=[];ddd=[];
+is100=~isnan(m(:,29));
+is60=~isnan(m(:,27));
+d1=180/pi*AngularDifference(m(is100,24)*pi/180,m(is100,29)*pi/180);
+d2=180/pi*AngularDifference(m(is60,24)*pi/180,m(is60,27)*pi/180);
+s100=AngularDifference(m(is100,29)*pi/180,0)*180/pi;
+s60=AngularDifference(m(is60,27)*pi/180,0)*180/pi;
+td20=m(:,36)-m(:,37);
+td40=m(:,36)-m(:,38);
+td60=m(:,36)-m(:,39);
+td80=m(:,36)-m(:,40);
+td100=m(:,36)-m(:,41);
+d60=m(:,42)-m(:,45);
+d100=m(:,42)-m(:,47);
+for k=1:length(dat)
+    inds=dat(k).is;
+    inds=1:length(dat(k).t);
+    relf=[relf (dat(k).f2n(inds)*pi/180)'];
+    co=(dat(k).co(inds)*pi/180)';
+    cc=[cc co];
+    relc=[relc AngularDifference(co,m(k,24)*pi/180)];
+    t=dat(k).t(inds)-m(k,36);
+    tts=[tts t];
+    relt100=[relt100 t/td100(k)];
+    relt60=[relt60 t/td60(k)];
+    len=[len dat(k).t(end)-dat(k).t(1)];
+    len2tp=[len2tp m(k,36)-dat(k).t(1)];
+    l1=[l1 dat(k).t(inds(end))-dat(k).t(inds(1))];
+    l2=[l2 m(k,36)-dat(k).t(inds(1))];
+    relt=[relt t/len(k)];
+    relt1=[relt1 t/l1(k)];
+    relt2=[relt2 t/l2(k)];
+    cs =dat(k).cs;
+    cd=diff(cs(inds,:));
+    ddd(k)=sum(CartDist(cd));
+    
+%     plot(t/td100(k),dat(k).f2n(inds),'r:',...
+%         t/td100(k),dat(k).co(inds))
+end
+div=[-1:.1:1.05]-.05;
+divr=[-.7:0.05:.7]+.025;
+divtp=[-1:.1:1.05]-.05;
+
+x=relf;
+df=getsdat(tts,x,div);
+dfr=getsdat(relt,x,divr);
+dftp=getsdat(relt2,x,divtp);
+% [da60,xp60]=StatsOverX(relt60,x,[0:0.1:2]);
+% [da100,xp100]=StatsOverX(relt100,x,[0:0.05:1]);
+
+x=cc;
+dc=getsdat(tts,x,div);
+dcr=getsdat(relt,x,divr);
+dctp=getsdat(relt2,x,divtp);
+% [da60,xp60]=StatsOverX(relt60,x,[0:0.1:2]);
+% [da100,xp100]=StatsOverX(relt100,x,[0:0.05:1]);
+
+
+dr=getsdat(tts,x,div);
+drr=getsdat(relt,x,divr);
+drtp=getsdat(relt2,x,divtp);
+figure(5)
+plot([df.a]*180/pi,[df.t],[dc.a]*180/pi,[dc.t],'r:',[dr.a]*180/pi,[dr.t],'k--')
+
+
+
+function[df]=getsdat(tts,x,p);
+thd=10;
+t3=[-180:thd:180+thd]-thd/2;
+thd=20;
+t2=[-180:thd:180+thd]-thd/2;
+if(nargin<3)
+    [da,xpt]=StatsOverX(tts,x);
+else
+    [da,xpt]=StatsOverX(tts,x,p);
+    [D,xs,ys,xps,yps]=Density2DAng(x*180/pi,tts,t2,p);
+    df.D=D;
+    df.xps=xps;
+    df.yps=yps;
+end
+df.a=[da.meang];
+df.r=[da.meangL];
+df.n=[da.n];
+df.t=xpt;
+df.sc=[da.angsd];
+
+
+function SimulateLoop
+load loopstatstemp
+
+% [psicw,psiaw,f2ncw,f2naw,cocw,coaw,tcw,taw,rcocw,rcoaw,spcw,spaw,rfcw,rfaw]=LoopPsi;
+% save looppsitemp;
+load looppsitemp;
+divi=-720:60:720;
+divi=-30:30:540;
+tdiv=0:0.1:1;
+% tdiv=-0.05:0.1:1.05;
+thd=20;
+figure(1)
+[Df2ncw,xs,ys,xps,yps]=Density2D(f2ncw*180/pi,tcw,[-180:thd:190]-thd/2,tdiv);
+[Df2naw,xs,ys,xps,yps]=Density2D(f2naw*180/pi,taw,[-180:thd:190]-thd/2,tdiv);
+[datc,xp]=StatsOverX(tcw,f2ncw,tdiv);
+[data,xp]=StatsOverX(taw,f2naw,tdiv);
+f2c=[datc.meang];
+f2a=[data.meang];
+subplot(2,2,1),contourf(xps,yps,Df2ncw);hold on;plot(f2c*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+subplot(2,2,2),contourf(xps,yps,Df2naw);hold on;plot(f2a*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+
+figure(7),
+rcocw=mod(rcocw,2*pi);
+rcoaw=mod(rcoaw,2*pi);
+[Df2ncw,xs,ys,xps,yps]=Density2D(rcocw*180/pi,tcw,[0:thd:370]-thd/2,tdiv);
+[Df2naw,xs,ys,xps,yps]=Density2D(rcoaw*180/pi,taw,[0:thd:370]-thd/2,tdiv);
+[datc,xp]=StatsOverX(tcw,rcocw,tdiv);
+[data,xp]=StatsOverX(taw,rcoaw,tdiv);
+rcoc=mod([datc.meang],2*pi);rcoc(1)=0;
+rcoa=mod([data.meang],2*pi);rcoa(1)=0;
+subplot(2,2,1),contourf(xps,yps(2:end),Df2ncw(2:end,:));hold on;plot(rcoc*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+subplot(2,2,2),contourf(xps,yps(2:end),Df2naw(2:end,:));hold on;plot(rcoa*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+rfcw=mod(rfcw,2*pi);
+rfaw=mod(rfaw,2*pi);
+[Df2ncw,xs,ys,xps,yps]=Density2D(rfcw*180/pi,tcw,[0:thd:370]-thd/2,tdiv);
+[Df2naw,xs,ys,xps,yps]=Density2D(rfaw*180/pi,taw,[0:thd:370]-thd/2,tdiv);
+[datc,xp]=StatsOverX(tcw,rfcw,tdiv);
+[data,xp]=StatsOverX(taw,rfaw,tdiv);
+rcoc=mod([datc.meang],2*pi);rcoc(1)=0;
+rcoa=mod([data.meang],2*pi);rcoa(1)=0;
+subplot(2,2,3),contourf(xps,yps(2:end),Df2ncw(2:end,:));hold on;plot(rcoc*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+subplot(2,2,4),contourf(xps,yps(2:end),Df2naw(2:end,:));hold on;plot(rcoa*180/pi,xp,'w','LineWidth',2);hold off;axis tight;
+
+
+[Dspcw,xs,ys,xps,yps]=Density2D(spcw,tcw,tdiv,tdiv);
+[Dspaw,xs,ys,xps,yps]=Density2D(spaw,taw,tdiv,tdiv);
+[dspc,xp]=StatsOverX(tcw,spcw,tdiv);
+[dspa,xp]=StatsOverX(taw,spaw,tdiv);
+spc=[dspc.med].^2;
+spa=[dspa.med].^3;
+spc=[dspc.med];
+spa=[dspa.med];
+
+[dum,maxind]=max(Dspcw');
+spc=xps(maxind);
+[dum,maxind]=max(Dspaw');
+spa=xps(maxind);
+
+subplot(2,2,3),contourf(xps,yps,Dspcw);hold on;plot(spc,xp,'w','LineWidth',2);hold off;axis tight;
+subplot(2,2,4),contourf(xps,yps,Dspaw);hold on;plot(spa,xp,'w','LineWidth',2);hold off;axis tight;
+
+spa=spa*50;spc=spc*50;
+
+stp=[5 -5];
+[xa,ya,f,o2n]=SimulatePath(stp,f2a,ones(size(f2a))*median(spa),xp);
+[xc,yc,f,o2n]=SimulatePath(stp,f2c,ones(size(f2c))*median(spc),xp);
+[xas,yas,f,o2n]=SimulatePath(stp,f2a,spa,xp);
+[xcs,ycs,f,o2n]=SimulatePath(stp,f2c,spc,xp);
+figure(2)
+subplot(2,2,1),plot(xc,yc,'r:',xcs,ycs),axis equal
+subplot(2,2,2),plot(xa,ya,'r:',xas,yas),axis equal
+
+stp=[15 50];
+[xa,ya,f,o2n]=SimulatePath(stp,f2a,ones(size(f2a))*median(spa),xp);
+[xc,yc,f,o2n]=SimulatePath(stp,f2c,ones(size(f2c))*median(spc),xp);
+[xas,yas,f,o2n]=SimulatePath(stp,f2a,spa,xp);
+[xcs,ycs,f,o2n]=SimulatePath(stp,f2c,spc,xp);
+subplot(2,2,3),plot(xc,yc,'r:',xcs,ycs),axis equal
+subplot(2,2,4),plot(xa,ya,'r:',xas,yas),axis equal
+
+save SimulateLoopParams f2a f2c rcoc rcoa xp tdiv
+
+function[psicw,psiaw,f2ncw,f2naw,cocw,coaw,tcw,taw,rcocw,rcoaw,spcw,spaw, ...
+    rspcw,rspaw]=ZZPsi;
+load processzigzagsin
+zz=fltsec;
+psiaw=[];f2naw=[];psicw=[];f2ncw=[];te=[];cocw=[];coaw=[];
+tcw=[];taw=[];spcw=[];spaw=[];rspcw=[];rspaw=[];rcocw=[];rcoaw=[];
+for i=1:length(zz)
+    o2n=zz(i).o2n;
+    t=zz(i).t;
+    cs=zz(i).cs;
+    v1=MyGradient(cs(:,1),t);
+    v2=MyGradient(cs(:,2),t);
+    [ce_o,spee]=cart2pol(v1,v2);
+
+    for j=1:length(zz(i).fsec)
+        is=zz(i).fsec(j).is;
+        if(length(is)>=4)
+            ts=t(is);
+            co=AngularDifference(zz(i).fsec(j).co,0);
+            so=AngularDifference(zz(i).fsec(j).so',0);
+%             cs=zz(i).fsec(j).cs;
+            ppsi=AngularDifference(zz(i).fsec(j).co,[zz(i).fsec(j).so]');
+            f2n=AngularDifference(zz(i).fsec(j).co,o2n(is));
+            relt=zz(i).fsec(j).reltDang2;
+            %             relt=zz(i).fsec(j).reltDco;
+            sps=find(relt==0);
+            eps=find(relt==1);
+            if(eps(1)<=sps(1)) eps=eps(2:end); end;
+            if(eps(end)<=sps(end)) sps=sps(1:end-1); end;
+            for k=1:length(sps)
+                izz=sps(k):eps(k);
+                [h,ad1 ad2] = LoopHandednes(co(izz));
+                if(ad2(1)<0)
+                    h=-1;
+                    cstr='anti-clock';
+                else
+                    h=1;
+                    cstr='clock';
+                end
+                relsp=spee(is(izz));
+
+                if(h==1)
+                    tcw=[tcw;relt(izz)'];
+                    cocw=[cocw;co(izz)];
+                    spcw=[spcw;relsp'];
+                    rspcw=[rspcw;relsp'/prctile(relsp,90)];
+                    rcocw=[rcocw;AngularDifference(co(izz),co(izz(1)))];
+                    psicw=[psicw;ppsi(izz)];
+                    f2ncw=[f2ncw;f2n(izz)];
+                else
+                    taw=[taw;relt(izz)'];
+                    rcoaw=[rcoaw;AngularDifference(co(izz),co(izz(1)))];
+                    spaw=[spaw;relsp'];
+                    rspaw=[rspaw;relsp'/prctile(relsp,90)];
+                    coaw=[coaw;co(izz)];
+                    psiaw=[psiaw;ppsi(izz)];
+                    f2naw=[f2naw;f2n(izz)];
+                end
+            end
+        end
+    end
+end
+
+
+
+
+function[psicw,psiaw,f2ncw,f2naw,cocw,coaw,tcw,taw,rcocw,rcoaw,...
+    spcw,spaw,rfcw,rfaw]=LoopPsi
+
+load loopstatstemp
+psiaw=[];f2naw=[];psicw=[];f2ncw=[];te=[];cocw=[];coaw=[];
+tcw=[];taw=[];spcw=[];spaw=[];rcocw=[];rcoaw=[];rfcw=[];rfaw=[];
+for i=1:length(loops)
+    ps=find([loops(i).Picked]);
+%     co=loops(i).Co;
+    co=[loops(i).so]';
+    cs=loops(i).cs;
+    ppsi=loops(i).fdir;
+    f2n=loops(i).f2n;
+    t=loops(i).t;
+    v1=MyGradient(cs(:,1),t);
+    v2=MyGradient(cs(:,2),t);
+    [ce_o,spee]=cart2pol(v1,v2);
+
+    for j=1:length(ps)
+        is=loops(i).loop(ps(j)).is;
+        [h,ad1 ad2] = LoopHandednes(co(is));
+        relt=t(is)-t(is(1));
+        relt=relt/max(relt);
+        relsp=spee(is)/prctile(spee(is),90);
+        sp=is(1);ep=is(end);
+
+        if(h==1)
+            tcw=[tcw;relt'];
+            cocw=[cocw;co(is)];
+            spcw=[spcw;relsp'];
+            rcocw=[rcocw;AngularDifference(co(is),co(is(1)))];
+            rfcw=[rfcw;AngularDifference(f2n(is),f2n(is(1)))];
+            psicw=[psicw;ppsi(is)];
+            f2ncw=[f2ncw;f2n(is)];
+        else
+            taw=[taw;relt'];
+            rcoaw=[rcoaw;AngularDifference(co(is),co(is(1)))];
+            rfaw=[rfaw;AngularDifference(f2n(is),f2n(is(1)))];
+            spaw=[spaw;relsp'];
+            coaw=[coaw;co(is)];
+            psiaw=[psiaw;ppsi(is)];
+            f2naw=[f2naw;f2n(is)];
+        end
+        te=[te;h,ad1];
+    end
+end
+
+function[hand,angdiff,mad] = LoopHandednes(co)
+
+smlen=2;
+len=length(co);
+en=min(1+smlen,len);
+st=max(1,len-smlen);
+angin=MeanAngle(co(1:en));
+angout=MeanAngle(co(st:end));
+angdiff=AngularDifference(angout+pi,angin);
+if(angdiff<0) hand=-1;
+else hand=1;
+end
+angdiff=round(angdiff*180/pi);
+ad=medfilt1(gradient(AngleWithoutFlip(co)));
+mad=round([median(ad) mode(ad)]*180/pi);
+

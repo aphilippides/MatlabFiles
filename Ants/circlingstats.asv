@@ -1,0 +1,426 @@
+function circlingstats(fltsec)
+
+figure(1)
+st=plotrates('allratesNoEastout','all data')
+% figure(2)
+% st=plotrates('loopstatsrates','loops')
+% figure(3)
+% st=plotrates('circlingstatstemp','circling')
+% figure(4)
+% st=plotrates('doublelooprates','double loops')
+% figure(5)
+% st=plotrates('zigzagrates','zigzags')
+
+% st(pp,1)={cadiff(:,4)};
+% st(pp,2)={cadiff(:,6)};
+% st(pp,3)={rca(:,11)};
+% st(pp,4)={rca(:,12)};
+
+% loopstats([],'circlingstatstemp')
+% return
+
+% AllRates('out')
+
+
+function changedir(fn)
+if(fn==1) cd ../2' east all'/
+elseif(fn==2) cd ../'2 west'/
+elseif(fn==3) cd ../'west 8'/
+elseif(fn==4) cd ../'north 8'/
+elseif(fn==5) cd ../'east 8'
+elseif(fn==6) cd ../'south 8'
+end
+
+function AllRates(inout)
+
+rs=[];rsm=[];ra_s=[];ra_sm=[];ra_sn=[];ra_sl=[];
+c_os=[];csm=[];ra_c=[];ra_cm=[];ra_cn=[];ra_cl=[];
+fs=[];fsm=[];ra_f=[];ra_fm=[];ra_fn=[];ra_fl=[];ra_f2n=[];ra_s2n=[];
+psi=[]; relfs=[];nors=[]; daxis=[]; dloop=[];
+maxpsi=[];sos=[];cos=[];psinest=[];
+ts=[];meanrates=[];meanratesN=[];meanratesL=[];
+
+nolook=[];nolooki=[];pcN=[];pcNind=[];pcL=[];
+majax=[];a2nest=[];maxds=[];XPts=[];loopt=[];a2lm=[];looplen=[];
+allcs=[];o2n=[];o2lm=[];allo2n=[];allsos=[];allcos=[];
+allLM.LMOnRetina=[]; allLM(1).OToLM=[]; allLM(1).psilm=[]; allLM(1).allpsilm=[];
+
+allpsin=[];allpsi=[];
+
+origdir=cd;
+for i=2:6
+    changedir(i);
+    flist=(dir(['*' inout '*All.mat']));
+    for j=1:length(flist)
+        fn=flist(j).name
+        load(fn);
+        if(exist('cmPerPix'))
+            [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+                ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fn,t,OToNest,cmPerPix,compassDir);
+        else
+            [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+                ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fn,t,OToNest,[],[]);
+        end
+        fdir=AngularDifference(Cent_Os,sOr);
+        [meanC,meanT,meanTind,len,in,ils,sn,en]=LookingPtsExpt2(fn,10);
+        %       
+        allsos=[allsos sOr];
+        allcos=[allcos Cent_Os'];
+        allo2n=[allo2n OToNest'];
+        allpsi=[allpsi fdir'];
+        allpsin=[allpsin fdir(in)'];
+        
+        as=AngleWithoutFlip(sOr)*180/pi;
+        ac=AngleWithoutFlip(Cent_Os)*180/pi;
+        af=AngleWithoutFlip(fdir)*180/pi;
+        af2n=AngleWithoutFlip(AngularDifference(Cent_Os,OToNest))*180/pi;
+        as2n=AngleWithoutFlip(AngularDifference(sOr,OToNest))*180/pi;
+        
+        asm=TimeSmooth(as,t,0.1);
+        acm=TimeSmooth(ac,t,0.1);
+        afm=TimeSmooth(af,t,0.1);
+        
+        smm=5;
+        gr_as=MyGradient(as,t);
+        gr_ac=MyGradient(ac,t);
+        gr_af=MyGradient(af,t);
+        gr_af2n=MyGradient(af2n,t);
+        gr_as2n=MyGradient(as2n,t);
+        ra_s=[ra_s gr_as];
+        ra_c=[ra_c gr_ac];
+        ra_f=[ra_f gr_af];
+        ra_f2n=[ra_f2n gr_af2n];
+        ra_s2n=[ra_s2n gr_as2n];
+        
+        ra_sn=[ra_sn gr_as(in)];
+        ra_sl=[ra_sl gr_as(ils(1).is)];
+        ra_cn=[ra_cn gr_ac(in)];
+        ra_cl=[ra_cl gr_ac(ils(1).is)];
+        ra_fn=[ra_fn gr_af(in)];
+        ra_fl=[ra_fl gr_af(ils(1).is)];
+        
+        meanrates=[meanrates; ...
+            mean(abs(gr_as)) mean(abs(gr_ac)) mean(abs(gr_af)) ...
+            median(abs(gr_as)) median(abs(gr_ac)) median(abs(gr_af)) ...
+            mean(abs(gr_af2n)) mean(abs(gr_as2n))];
+
+        meanratesL=[meanratesL; ...
+            mean(abs(gr_as(ils(1).is))) mean(abs(gr_ac(ils(1).is))) mean(abs(gr_af(ils(1).is))) ...
+            median(abs(gr_as(ils(1).is))) median(abs(gr_ac(ils(1).is))) median(abs(gr_af(ils(1).is))) ...
+            mean(abs(gr_af2n(ils(1).is))) mean(abs(gr_as2n(ils(1).is)))];
+
+        meanratesN=[meanratesN; ...
+            mean(abs(gr_as(in))) mean(abs(gr_ac(in))) mean(abs(gr_af(in))) ...
+            median(abs(gr_as(in))) median(abs(gr_ac(in))) median(abs(gr_af(in))) ...
+            mean(abs(gr_af2n(in))) mean(abs(gr_as2n(in)))];      
+        
+        ra_sm=[ra_sm medfilt1(gr_as,smm)];
+        ra_cm=[ra_cm medfilt1(gr_ac,smm)];
+        ra_fm=[ra_fm medfilt1(gr_af,smm)];
+    end
+end
+cd(origdir);
+ff=['allratesNoEast' inout '.mat'];
+save(ff)
+plotrates(ff)
+
+% save allratesNoEastin
+% plotrates('allratesNoEastin')
+
+function[st]= plotrates(fn,tstr)
+load(fn)
+subplot(3,1,1);%figure(1)
+[y1,x1]=hist(abs(ra_s),0:20:2000);
+[y2,x2]=hist(abs(ra_c),0:20:2000);
+[y3,x3]=hist(abs(ra_f),0:20:2000);
+plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+xlabel('rates'),title(tstr)
+% subplot(2,2,2);%figure(2)
+% [y1,x1]=hist(abs(ra_sm),0:20:2000);
+% [y2,x2]=hist(abs(ra_cm),0:20:2000);
+% [y3,x3]=hist(abs(ra_fm),0:20:2000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('smoothed rates')
+% subplot(3,1,2);%figure(3)
+% [y1,x1]=hist(abs(ra_sn),0:20:2000);
+% [y2,x2]=hist(abs(ra_cn),0:20:2000);
+% [y3,x3]=hist(abs(ra_fn),0:20:2000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('nest looking rates')
+% subplot(3,1,3);%figure(4)
+% [y1,x1]=hist(abs(ra_sl),0:20:2000);
+% [y2,x2]=hist(abs(ra_cl),0:20:2000);
+% [y3,x3]=hist(abs(ra_fl),0:20:2000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('LM looking rates')
+subplot(3,1,2);%figure(5)
+[y1,x1]=hist(meanrates(:,1),0:20:1000);
+[y2,x2]=hist(meanrates(:,2),0:20:1000);
+[y3,x3]=hist(meanrates(:,3),0:20:1000);
+plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+xlabel('mean rates')
+subplot(3,1,3);%figure(6)
+% [y1,x1]=hist(meanrates(:,4),0:20:1000);
+% [y2,x2]=hist(meanrates(:,5),0:20:1000);
+% [y3,x3]=hist(meanrates(:,6),0:20:1000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('median rates')
+m1=meanrates(:,2)./meanrates(:,1);
+m2=meanrates(:,3)./meanrates(:,1);
+[y1,x1]=hist(m1,0:0.2:4);
+[y2,x2]=hist(m2,0:0.2:4);
+plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:')
+xlabel('ratio rates')
+st=[mean([m1 m2]) std([m1 m2])];% size(m1,1)];
+
+function[st]= plotratesNest(fn,tstr)
+load(fn)
+subplot(3,1,1);%figure(1)
+[y1,x1]=hist(abs(ra_s2n),0:20:2000);
+[y2,x2]=hist(abs(ra_c),0:20:2000);
+[y3,x3]=hist(abs(ra_f2n),0:20:2000);
+plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+xlabel('rates'),title(tstr)
+% subplot(2,2,2);%figure(2)
+% [y1,x1]=hist(abs(ra_sm),0:20:2000);
+% [y2,x2]=hist(abs(ra_cm),0:20:2000);
+% [y3,x3]=hist(abs(ra_fm),0:20:2000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('smoothed rates')
+% subplot(3,1,2);%figure(3)
+% [y1,x1]=hist(abs(ra_sn),0:20:2000);
+% [y2,x2]=hist(abs(ra_cn),0:20:2000);
+% [y3,x3]=hist(abs(ra_fn),0:20:2000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('nest looking rates')
+% subplot(3,1,3);%figure(4)
+% [y1,x1]=hist(abs(ra_sl),0:20:2000);
+% [y2,x2]=hist(abs(ra_cl),0:20:2000);
+% [y3,x3]=hist(abs(ra_fl),0:20:2000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('LM looking rates')
+subplot(3,1,2);%figure(5)
+[y1,x1]=hist(meanrates(:,1),0:20:1000);
+[y2,x2]=hist(meanrates(:,5),0:20:1000);
+[y3,x3]=hist(meanrates(:,6),0:20:1000);
+plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+xlabel('mean rates')
+subplot(3,1,3);%figure(6)
+% [y1,x1]=hist(meanrates(:,4),0:20:1000);
+% [y2,x2]=hist(meanrates(:,5),0:20:1000);
+% [y3,x3]=hist(meanrates(:,6),0:20:1000);
+% plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:',x3,y3/sum(y3),'k--x')
+% xlabel('median rates')
+m1=meanrates(:,5)./meanrates(:,6);
+m2=meanrates(:,5)./meanrates(:,1);
+[y1,x1]=hist(m1,0:0.2:4);
+[y2,x2]=hist(m2,0:0.2:4);
+plot(x1,y1/sum(y1),x2,y2/sum(y2),'r:')
+xlabel('ratio rates')
+st=[mean([m1 m2]) std([m1 m2])];% size(m1,1)];
+
+
+
+function[loops]=LoopAngles(cs,inds,co,ts,cmpdir,l1)
+loops=[];
+
+is=1:size(cs,1);
+if(isempty(is)) return; end;
+smlo=1;
+smhi=2;
+for i=1:(length(is)-1)
+    js=(i+3):size(cs,1)-1;%GetTimes(t(1:end-1),t1+tlim);
+    for j=js
+        if(isCross(cs(is(i):is(i)+1,:),cs(j:j+1,:)))
+            if(l1) ils=is(i):j+1;
+            else
+                i2s=size(cs,1):-1:1;
+                cs=cs(i2s,:);
+                ils=i2s(j+1):i2s(is(i));
+            end
+            len=length(ils);
+            len2=floor(0.5*len);
+            loops.is=inds(ils);
+            loops.cs=cs(ils,:);
+            loops.co=co(ils);
+            loops.ts=ts(ils);
+            loops.ds=CartDist(cs(ils,:),cs(ils(1),:));
+            loops.len=max(loops.ds);
+            loops.t=ts(ils(end))-ts(ils(1));
+            loops.xp=GetXPt(ils(1),ils(end),cs);
+            
+            loops.angin=co(ils(1));
+            loops.angout=co(ils(end-1));
+
+            st=max(is(1),ils(1)-smlo);
+            en=ils(1)+min(smhi,len2);
+            loops.angsin=co(st:en);
+            
+            en=min(length(is),len-1+smlo);
+            st=len-1-min(smhi,len2);
+            loops.angsout=co(st:en);
+            
+            loops.angdiff=AngularDifference(loops.angout+pi,loops.angin);
+            loops.xangle=MeanAngle([loops.angout+pi loops.angin]);
+            if(loops.angdiff<0) loops.hand=-1;
+            else loops.hand=1;
+            end
+            
+            vs=cs(ils,:) - ones(length(ils),1)*loops.xp;           
+            [area,axes,angles,ellip] = ellipse(cs(ils,1),cs(ils,2),[],0.8535);
+            [gx,gy]=pol2cart(angles(1),1);
+            dds=vs*[gx;gy]; dds([1 end])=0;
+            loops.dds=dds;
+            [maxi,maxind]=max(abs(dds));
+            if(dds(maxind)<0) angles(1)=mod(angles(1)-pi,2*pi);end
+            [px,py]=pol2cart(angles(1),maxi);
+            
+%             dloop=[dloop [abs(dvs)/max(dvs)]'];
+%             daxis=[daxis [abs(dds)/maxi]'];
+            
+            loops.ep=loops.xp+[px py];
+            loops.ept=ts(ils(maxind));
+            loops.len2=maxi;
+            loops.ang=mod(angles(1)-cmpdir,2*pi);
+            
+            loops.cp=mean(cs(ils,:),1);
+            mpv=loops.cp-loops.xp;
+            loops.cpang=mod(cart2pol(mpv(1),mpv(2))-cmpdir,2*pi);
+            loops.a2nest=mod(cart2pol(loops.xp(1),loops.xp(2))-cmpdir,2*pi);
+        %             a2lm=[a2lm
+        %             mod(cart2pol(loops(i).LM(1,1)-xp(1),loops(i).LM(1,2)-xp(2))-loops(i).cd,2*pi)];
+            if(0)
+            [tmpx,tmpy]=pol2cart(loops.xangle+cmpdir,loops.len);
+            lxs=[loops.xp;loops.xp+[tmpx,tmpy]];            
+            plot(cs(:,1),cs(:,2),'r--',loops.cs(:,1),loops.cs(:,2),'k- .');hold on;
+            plot(lxs(:,1),lxs(:,2),loops.xp(1),loops.xp(2),'bs',...
+                loops.cp(1),loops.cp(2),'rx',loops.ep(1),loops.ep(2),'bo')
+            title(['Hand ' int2str(loops.hand)])
+            CompassAndLine('k',1); axis equal; hold off
+            drawnow;
+            end
+            return;
+        end
+    end
+end
+
+
+function[cr]=isCross(l1,l2)
+
+x1=l1(1,1); y1=l1(1,2);
+x2=l1(2,1); y2=l1(2,2);
+x3=l2(1,1); y3=l2(1,2);
+x4=l2(2,1); y4=l2(2,2);
+
+[x,y]=IntersectionPoint(x1,x2,x3,x4,y1,y2,y3,y4);
+
+cr=0;
+if((x>=min(x1,x2))&&(x<=max(x1,x2)))
+    if((y>=min(y1,y2))&&(y<=max(y1,y2)))
+        if((x>=min(x3,x4))&&(x<=max(x3,x4)))
+            if((y>=min(y3,y4))&&(y<=max(y3,y4))) cr=1; end
+        end
+    end
+end
+
+
+function[pcN,pcL,pcNind,nolook,nolooki]= LookPts(t,loop,cs,in,ils,inds,pic,LM,LMWid)
+
+nL=length(loop)
+% divide arcs into10
+narc=10;
+nls=zeros(nL,2*narc);
+nlind=zeros(nL,2*narc);
+nt_is=zeros(nL,2*narc);
+nolook=[];nolooki=[];pcN=[];pcNind=[];
+for i=1:length(ils)
+    pcL(i).nolook=[];pcL(i).nolooki=[];pcL(i).pc=[];pcL(i).pci=[];
+end
+for k=1:nL
+    if(pic(k))
+        % time based loop
+        is=loop(k).is;
+        tr=[t([is(1) is(end)])];
+        tl=tr(2)-tr(1);
+        t_is=GetTimes(t,tr);
+        lks=intersect(t_is,in);
+        if(~isempty(lks)) pcN=[pcN (t(lks)-tr(1))/tl];
+        else nolook=[nolook; k tr(1) tl];
+        end;
+        lks=intersect(t_is,inds);
+        if(~isempty(lks)) pcNind=[pcNind (t(lks)-tr(1))/tl];
+        else nolooki=[nolooki; k tr(1) tl];
+        end;
+        for i=1:length(ils)
+            lks=intersect(t_is,ils(i).is);
+            if(~isempty(lks)) pcL(i).pc=[pcL(i).pc (t(lks)-tr(1))/tl];
+            else pcL(i).nolook=[pcL(i).nolook k];
+            end;
+            lks=intersect(t_is,ils(i).meanTind);
+            if(~isempty(lks)) pcL(i).pci=[pcL(i).pci (t(lks)-tr(1))/tl];
+            else pcL(i).nolooki=[pcL(i).nolooki k];
+            end;
+        end
+        
+        ds=CartDist(cs(is,:),cs(is(1),:));
+        figure(1),plot(t(is),ds);
+        lks=intersect(t_is,in);
+        if(~isempty(lks))
+            hold on;d2=CartDist(cs(lks,:),cs(is(1),:));
+            plot(t(lks),d2,'r.');  hold off
+        end
+        lks=intersect(t_is,ils(1).is);
+        if(~isempty(lks))
+            hold on;d2=CartDist(cs(lks,:),cs(is(1),:));
+            plot(t(lks),d2,'gs');  hold off
+        end
+        title(num2str(tr))
+        
+        figure(2),plot(cs(is,1),cs(is,2));
+        lks=intersect(t_is,in);
+        if(~isempty(lks))
+            hold on;d2=CartDist(cs(lks,:),cs(is(1),:));
+            plot(cs(lks,1),cs(lks,2),'r.');  hold off
+        end
+        lks=intersect(t_is,ils(1).is);
+        if(~isempty(lks))
+            hold on;d2=CartDist(cs(lks,:),cs(is(1),:));
+            plot(cs(lks,1),cs(lks,2),'gs');  hold off
+        end
+        hold on; PlotNestAndLMs(LM,LMWid,[0 0],0);
+        
+        
+        hold off
+        
+        axis equal
+        title(num2str(tr))
+        
+        %     tr=[mi2ma(i,1) mi2ma(i,4)];
+        %     ts =(tr(2)-tr(1))/narc;
+        %     for j=1:narc
+        %         t_is=GetTimes(t,[tr(1)+(j-1)*ts tr(1)+j*ts]);
+        %         lks=intersect(t_is,ils);
+        %         nt_is(k,j)=nt_is(k,j)+length(t_is);
+        %         nls(k,j)=nls(k,j)+length(lks);
+        %         lks=intersect(t_is,inds);
+        %         nlind(k,j)=nlind(k,j)+length(lks);
+        %     end
+        %     tr=[mi2ma(i,4) mi2ma(i+1,1)];
+        %     ts =(tr(2)-tr(1))/narc;
+        %     for j=1:narc
+        %         t_is=GetTimes(t,[tr(1)+(j-1)*ts tr(1)+j*ts]);
+        %         nt_is(k,j+narc)=nt_is(k,j+narc)+length(t_is);
+        %         lks=intersect(t_is,ils);
+        %         nls(k,j+narc)=nls(k,j+narc)+length(lks);
+        %         lks=intersect(t_is,inds);
+        %         nlind(k,j+narc)=nlind(k,j+narc)+length(lks);
+        %     end
+    end
+end
+% keyboard
+
+
+function[X]=GetXPt(i1,i2,c)
+[x,y]=IntersectionPoint(c(i1,1),c(i1+1,1),c(i2,1),c(i2-1,1),...
+    c(i1,2),c(i1+1,2),c(i2,2),c(i2-1,2));
+X=[x y];

@@ -1,0 +1,151 @@
+% function[meanC,meanT,meanTind,len,in,ils,Cents,EndPt] ...
+%     = LookingPtsExpt2(fn,th,iLen,dlim,iLenLM,skiplim)
+% 
+% function which calculates the looking events at nest and LM 
+% in file fn between retinal angles th1 and th2 where th1<th2
+% if th2 unspecified it is assumed that th2=-th1
+%
+% Can specify only events over length iLen (default=1) are returned
+% Pl specifies whether to plot them or not (default 0)
+%
+% returned values are mean pos nest, mean pos lm, length nest events
+% length lm events, mean time nest, mean time lm, inds looking both
+
+function[meanC,meanT,meanTind,len,in,ils,sn,en,Cents,EndPt,nest,LM,LMWid] ...
+    = LookingPtsExpt2(fn,th,iLen,dlim,iLenLM,skiplim,LMs,DToNest,LM)
+
+if(ischar(fn))
+    load(fn)
+    if(exist('cmPerPix'))
+        [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+            ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fn,t,OToNest,cmPerPix,compassDir);
+    else
+        [nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,sc,Speeds,Vels,Cent_Os,OToNest]= ...
+            ReScaleDataExpt2(nest,LM,LMWid,DToNest,Cents,EndPt,LMs,sOr,fn,t,OToNest,[],[]);
+    end
+else NestOnRetina=fn;
+end
+
+if((nargin<3)|isempty(iLen)) iLen = 1; end;
+if((nargin<5)|isempty(iLenLM)) iLenLM=iLen; end;
+if((nargin<6)|isempty(skiplim)) skiplim=0.08; end;
+
+if(size(th,2)==2)
+    th2=th(:,2);
+    th1=th(:,1);
+else
+    th2=abs(th);
+    th1=-th2;
+end
+th1=th1*pi/180;
+th2=th2*pi/180;
+if(size(th1,1)==1) 
+    th1=th1*ones(length(LMs)+1,1);
+    th2=th2*ones(length(LMs)+1,1);
+end
+
+in=find((NestOnRetina<=th2(1))&(NestOnRetina>=th1(1)));
+[sn,en,len]=StartFinish(t,in,skiplim);
+
+% get really brief ones
+if(iLen==0) [sn,en,len]=ShortLooks(NestOnRetina,th2(1),sn,en,len); end
+
+% limit by length of look
+js=find(len>=iLen);sn=sn(js);en=en(js);
+
+for i=1:length(sn)
+    is=sn(i):en(i);
+    ins(i).lks=is;
+    meanT(i)=mean(t(is));
+    meanC(i,:)=meanc(meanT(i),t(is),Cents(is,:));
+end
+if(isempty(sn)) meanTind=[];meanC=[];meanT=[];ins=[];
+else meanTind=GetTimes(t,meanT');
+end
+% limit by distance from the nest
+if((nargin>=4)&(~isempty(dlim))) 
+    inD=find(DToNest(meanTind)<=dlim);
+    meanC=meanC(inD);
+    meanT=meanT(inD);
+    len=len(inD);
+    meanTind=meanTind(inD);
+    sn=sn(inD);
+    en=en(inD);
+end
+
+lmo=LMOrder(LM);
+for i=1:length(LMs)
+    ll=LMs(lmo(i)).LMOnRetina;
+    ils(i).is=find((ll>=th1(i+1))&(ll<=th2(i+1)));
+    [sl,el,ils(i).len]=StartFinish(t,ils(i).is,skiplim);
+    
+    % Get brief looks
+    if(iLenLM==0) 
+        [sl,el,ils(i).len]=ShortLooks(ll,th2(i+1),sl,el,ils(i).len);
+    end
+    
+    % limit by look length
+    js=find(ils(i).len>=iLenLM);sl=sl(js);el=el(js);
+    
+    % get looking point data
+    for j=1:length(sl)
+        is=sl(j):el(j);
+        ils(i).meanT(j)=mean(t(is));
+        ils(i).meanC(j,:)=meanc(ils(i).meanT(j),t(is),Cents(is,:));
+    end
+    if(isempty(sl)) ils(i).meanTind=[];ils(i).meanC=[];ils(i).meanT=[];
+    else ils(i).meanTind=GetTimes(t,[ils(i).meanT]');
+    end
+    % limit by distance from the nest
+    if((nargin>=4)&(~isempty(dlim))) 
+        inD=find(DToNest(ils(i).meanTind)<=dlim);
+        ils(i).meanC=ils(i).meanC(inD);
+        ils(i).meanT=ils(i).meanT(inD);
+        ils(i).len=ils(i).len(inD);
+        ils(i).meanTind=ils(i).meanTind(inD);
+        sl=sl(inD);
+        el=el(inD);
+    end;
+    ils(i).sl=sl;ils(i).el=el;
+end
+
+function[sn,en,len]=ShortLooks(NestOnRetina,th2,sn,en,len);
+ad=diff(0.5*sign(NestOnRetina));
+p=find(abs(ad)==1);
+p=p(find(abs(NestOnRetina(p))<pi/4));
+d1s=abs(NestOnRetina(p));
+d2s=abs(NestOnRetina(p+1));
+shorts=find((d1s>th2)&(d2s>th2));
+sn=[sn p(shorts)'];
+en=[en p(shorts)'+1];
+len=[len zeros(size(shorts'))];
+[sn is]=sort(sn);
+en=en(is);
+len=len(is);
+
+function[mc]=meanc(mt,t,cs)
+i1=find(t<=mt,1,'last');
+i2=find(t>=mt,1);
+if(i1==i2) mc=cs(i1,:);
+else
+    c1=cs(i1,:);
+    c2=cs(i2,:);
+    td=(t(i2)-mt)/(t(i2)-t(i1));
+    mc=c1*td + c2*(1-td);
+end
+
+function[s,e,l]=StartFinish(t,is,th)
+s=[];e=[];l=[];
+if(isempty(is)) return; end;
+i=1;
+while 1
+    s=[s is(i)];
+    ex=find(diff(t(is(i:end)))>th,1);
+    if(isempty(ex)) 
+        e=[e is(end)];
+        break;
+    else e=[e is(i+ex-1)];
+    end
+    i=i+ex;
+end
+l=e-s+1;

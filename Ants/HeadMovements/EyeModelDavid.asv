@@ -1,0 +1,117 @@
+function EyeModelDavid
+
+% specify  azimuth + height increments in degrees and metres
+ang_gap=4;
+ang_ht=0.05;
+% specify the azimuthal angles and height range in metres
+th=(0:ang_gap:359)*pi/180;
+zpix=(0:ang_ht:2.5)';
+
+% specify the radius of arena in metrs
+rad=5;
+
+% get the cylindrical coordinates of each point in the world 
+[T,Z]=meshgrid(th,zpix);
+R=ones(size(T))*rad;
+
+% define colours for every 'point' in the world. 1 is white, 0 is black
+origim=ones(length(zpix),length(th));
+v1=ones(size(zpix));
+for i=1:length(th)
+    if(th(i)<pi/1.5)
+        ima(:,i)=zpix>0.8;
+    else
+        ima(:,i)=v1;
+    end
+end
+
+% show the panoramic image as seen from the centre of the arena
+imagesc(th,zpix,double(ima)),set(gca,'YDir','normal')
+pcolor(T,Z,double(ima)),shading faceted%set(gca,'YDir','normal')
+
+% get the cartesian coordinates of each point in the world  
+[X,Y]=pol2cart(T,R);
+
+%%%%%%
+% up to here is general and then you can do the below to get an ant's eye 
+% view from different positions
+
+% position and heading of ant (in meters and radians)
+pos=[2,4];
+head=pi;
+
+% get the cartesian coordinates of points in the world relative to agent
+Xa=X-pos(1);
+Ya=Y-pos(2);
+
+% get the spherical coordinates of the points relative to agent
+[Tha,Ela,Ra]=cart2sph(Xa,Ya,Z);
+ThaFl=Tha;
+
+% this bit 'wraps' the azimuthal angles for plotting
+for i=1:size(Tha,1)
+    ThaFl(i,:)=AngleWithoutFlip(Tha(i,:));
+end
+
+% this then rotates the world to the rotated heading of the agent
+% Depending on which way round you're calcualting headings this could be 
+% ThaFl+head but you'll have to check this out
+ThaFl=ThaFl-head;
+
+% this shows the object from the perspective of the insect 
+pcolor(ThaFl*180/pi,Ela*180/pi,double(ima)),shading faceted%set(gca,'YDir','normal')
+
+% Essentially, we now have where each 'point' in the world intersects 
+% wiht the agents eye. So the next step, is to resample this evenly I think.
+%
+% To get an even coverage of the eye you need to go through the coordinates
+% that are returned in ThaFl and Ela and average over any points that contribute
+% something like the commented out bit below (but this doesn't really work)
+% ie 
+% 1. find the correct columns for each azimuthal angle you want useing
+% ThaFl or Tha
+%
+% 2. find the rows in Ela that correspond to each elevation angle
+%
+% 3. make an average of all the elements in ima in these rows and columns  
+% 
+% you'll need to fill in any 'empty' facets witht he approproiate colour
+% and it might help to do a finer grid of the white bits with reds (1's)
+%
+% Essentially, I think that how it appears is the correct 
+% distortion on the eye but it would be best to check it
+
+
+% all this is unused but various (incorrect) ways of 
+% resampling 
+
+% % specify the azimuthal and elevation angles of the eye
+% gp=4;
+% th2=(0:gp:359)*pi/180;
+% el2=(0:gp:80)*pi/180;
+% gp=gp*pi/180;
+
+% % find all points in each pixel and average the colours within them
+% for i=1:length(th2)
+%     ith=find((th2(i)<=Tha(1,:))&(Tha(1,:)<(th2(i)+gp)));
+%     els=Ela(ith);
+%     for j=1:length(el2)
+%         cs=cols((el2(j)<=els)&(els<(el2(j)+gap)));
+%         if(isempty(cs))
+%             newc(i,j)=1;
+%         else
+%             newc(i,j)=mean(cs);
+%         end
+%     end
+% end
+
+
+% % set pixel size for ant eye in radians
+% pix=4*pi/180;
+% DegFl=(min(ThaFl(:)):pix:max(ThaFl(:)))*180/pi;
+% DegEl=(min(Ela(:)):pix:max(Ela(:)))*180/pi;
+% [DegTh,DegE]=meshgrid(DegFl,DegEl);
+% im_resamp=interp2(ThaFl(:,20:90)*180/pi,Ela(:,20:90)*180/pi,ima(:,20:90),DegTh,DegE,'*cubic');
+% pcolor(DegTh,DegE,im_resamp)%set(gca,'YDir','normal')
+
+

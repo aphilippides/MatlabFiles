@@ -1,0 +1,390 @@
+function[NestCo]=CheckCoincidentPonts%(ipl,lfname)
+
+load('NestCoDataIn 2east1_13.mat');
+NestCo=GetCoincidentPoints;
+for i=1:nloops
+    NestCoCh(i)=CheckAllCoin(NestCo(i),i,nloops);
+end
+
+function[NestCo]=CheckAllCoin(NestCo,nf,numf)
+NestCo.checked=0;
+co=NestCo.co;
+coin=NestCo.incids(1,:);
+cs=NestCo.cs;
+t=NestCo.t;
+zinds=NestCo.zis;
+linds=NestCo.lis;
+begs=NestCo.begis;
+
+% Select the turning points
+% mf=MeanFlightAng(co);
+% [ma_t,ma_s,mi_t,mi_s,ma,mi]=GetMaxAndMins(mf,t,0.17,0.04,0);
+% ex=[ma mi];
+
+CoinType=zeros(size(coin))*NaN;
+BegType=zeros(size(coin));
+NestCo.znum=zeros(size(coin));
+NestCo.lnum=zeros(size(coin));
+NestCo.nznum=zeros(size(coin));
+NestCo.nlnum=zeros(size(coin));
+for j=1:length(coin)
+    zzsec(j).is=[];
+    lsec(j).is=[];
+end
+i=1;
+sc=coin(i);
+intp=50;
+intm=50;
+maxi=length(t);
+tstr={'ZZ';'LOOP';'BOTH';'NONE'};
+while 1
+    is=max(1,sc-intm):min(maxi,sc+intp);
+    coint=intersect(coin,is);
+    zis=intersect(zinds,is);
+    lis=intersect(linds,is);
+    zls=intersect(zis,lis);
+    bis=intersect(begs,is);
+    nzis=intersect([zzsec.is],is);
+    nlis=intersect([lsec.is],is);
+
+    if(isnan(CoinType(i)))
+        if(ismember(sc,zls))
+            CoinType(i)=3;
+            for j=1:length(NestCo.zz)
+                if(ismember(sc,NestCo.zz(j).is))
+                    NestCo.znum(i)=j;
+                    break
+                end
+            end
+            for j=1:length(NestCo.loo)
+                if((NestCo.loo.Picked(j))&&(ismember(sc,NestCo.loo(j).is)))
+                    NestCo.lnum(i)=j;
+                    break;
+                end
+            end
+        elseif(ismember(sc,zis))
+            CoinType(i)=1;
+            for j=1:length(NestCo.zz)
+                if(ismember(sc,NestCo.zz(j).is))
+                    NestCo.znum(i)=j;
+                    break
+                end
+            end
+        elseif(ismember(sc,lis))
+            CoinType(i)=2;
+            for j=1:length(NestCo.loo)
+                if((NestCo.loo.Picked(j))&&(ismember(sc,NestCo.loo(j).is)))
+                    NestCo.lnum(i)=j;
+                    break;
+                end
+            end
+        elseif(ismember(sc,[zzsec.is]))
+            CoinType(i)=1;
+            for j=1:length(zzsec)
+                if(ismember(sc,zzsec(j).is))
+                    NestCo.nznum(i)=j;
+                    break
+                end
+            end
+        elseif(ismember(sc,[lsec.is]))
+            CoinType(i)=2;
+            for j=1:length(lsec)
+                if(ismember(sc,lsec(j).is))
+                    NestCo.nlnum(i)=j;
+                    break
+                end
+            end
+        else
+            CoinType(i)=4;
+        end
+        if(ismember(sc,bis))
+            BegType(i)=1;
+        end
+    end
+    PlotNestAndLMs(NestCo.LM,NestCo.LMw,[0 0],0);
+    hold on;
+    plot(cs(is,1),cs(is,2),'b',cs(coint,1),cs(coint,2),'ro','MarkerSize',8)
+    plot(cs(lis,1),cs(lis,2),'k.',cs(nlis,1),cs(nlis,2),'r.',...
+        cs(zis,1),cs(zis,2),'kx',cs(nzis,1),cs(nzis,2),'rx',...
+        cs(sc,1),cs(sc,2),'g*',cs(bis,1),cs(bis,2),'g','MarkerSize',8,'LineWidth',1.5) 
+    text(cs(is(1),1),cs(is(1),2),'START');
+    axis equal
+    hold off
+    xlabel('z=ZZ; l=loop; b=both; 0=none; u=back; return=done; cursors add points')
+    ts=(['file ' int2str(nf) '/' int2str(numf) '; point ' int2str(i) '/' ...
+        int2str(length(coin)) ' is a ' char(tstr(CoinType(i)))]);
+    if(BegType(i))
+        ts=[ts '; START'];
+    end
+    title(ts);
+    [x,y,inp]=ginput(1);
+    if(isempty(inp))  % move on
+        i=i+1;
+        if(i>length(coin))
+            break;
+        else
+            sc=coin(i);
+            intp=25;
+            intm=25;
+        end
+    elseif(isequal(inp,122)) % zigzag
+        CoinType(i)=(1);
+        if(~ismember(sc,zis))
+            if(~ismember(sc,[zzsec.is]))
+                hold on
+                zzsec(i).is=SelectFlightSection(cs,is,'ZZ');
+                NestCo.nznum(i)=i;
+                hold off
+            else
+                for j=1:length(zzsec)
+                    if(ismember(sc,zzsec(j).is))
+                        NestCo.nznum(i)=j;
+                        break
+                    end
+                end
+            end
+        end
+    elseif(isequal(inp,108)) % loop
+        CoinType(i)=(2);
+        if(~ismember(sc,lis))
+            if(ismember(sc,[lsec.is]))
+                for j=1:length(lsec)
+                    if(ismember(sc,lsec(j).is))
+                        NestCo.nlnum(i)=j;
+                        break
+                    end
+                end
+            elseif(ismember(sc,[NestCo.lallis]))
+                j=1;
+                while 1
+                    tlis=NestCo.loo(j).is;
+                    if(ismember(sc,tlis))
+                        hold on;
+                        h=plot(cs(tlis,1),cs(tlis,2),'k.');
+                        hold off;
+                        title('y = pick this loop; return next loop')
+                        [x,y,b]=ginput(1);
+                        delete(h);
+                        if(isequal(b,121))
+                            lsec(i).is=tlis;
+                            NestCo.nlnum(i)=i;
+                            break;
+                        end
+                    end
+                    j=j+1;
+                    if(j>length(NestCo.loo))
+                        j=1;
+                    end
+                end
+            else
+                hold on
+                lsec(i).is=SelectFlightSection(cs,is,'loop');
+                NestCo.nlnum(i)=i;
+                hold off
+            end
+        end
+    elseif(isequal(inp,98))  % both
+        CoinType(i)=(3);
+    elseif(isequal(inp,48))  % none
+        CoinType(i)=(4);
+    elseif(isequal(inp,30))  % add points in front
+        intp=intp+3;
+    elseif(isequal(inp,31))  % add points in back
+        intm=intm+3;
+    elseif(isequal(inp,117)) % go back one point
+        i=i-1;
+        sc=coin(i);
+    end
+end
+NestCo.checked=1;
+NestCo.CoinType=CoinType;
+NestCo.BegType=BegType;
+NestCo.zzsec=zzsec;
+NestCo.lsec=lsec;
+
+
+function[NestCo]=GetCoincidentPoints
+
+if(nargin<2) 
+    load loopstatstemp
+    load processflightsecOut
+    zz=[];
+    infiles=0;
+else
+    infiles=1;
+    zzfile='processzigzagsin';
+    load(zzfile)
+    zz=fltsec;
+    load(lfname)
+    if(isfile('processflightsecIn'))
+        load('processflightsecIn');
+    else
+        fltsec=[];
+    end
+end
+
+nf=0;
+PhDat.c=zeros(1,4);numloop=0;
+nloops=length(loops);
+for i=1:nloops
+    ps=find([loops(i).Picked]);
+    co=AngularDifference(loops(i).Co,0);
+    so=AngularDifference([loops(i).so]',0);
+    cs=loops(i).cs;
+    ppsi=loops(i).fdir;
+    f2n=loops(i).f2n;
+    s2n=loops(i).nor;
+    o2n=loops(i).o2n;
+    t=loops(i).t;
+    ds=CartDist(cs);
+
+    % get all coincident points
+    [pall0]=Thru0Pts(ppsi,t,pi/18,[],0.08);
+    [fall0]=Thru0Pts(f2n,t,pi/18,[],0.08);
+    ball=intersect(pall0,fall0);
+    [dum,dum,blenall,imidall]=StartFinish(t,ball,0.05);
+    NestCo(i).co=co;
+    NestCo(i).t=t;
+    NestCo(i).cs=cs;
+    NestCo(i).psi=ppsi;
+    NestCo(i).f2n=f2n;
+    NestCo(i).inds=ball;
+    NestCo(i).incids=[imidall;blenall];
+    NestCo(i).is=1:length(t);
+    if(infiles)
+        revd=ds(end:-1:1);
+        sp=length(t)-find(revd>5,1)+1;
+        NestCo(i).begis=sp+1:length(t);
+    else
+        NestCo(i).begis=1:find(ds>5,1)-1;
+    end
+    
+    NestCo(i).cutoff=find(ds<2.5,1);
+    
+    if(isempty(loops(i).loop))
+        NestCo(i).lallis=[];
+        NestCo(i).lis=[];
+        NestCo(i).loo=[];
+        NestCo(i).ps=[];
+    else
+        NestCo(i).lallis=unique([loops(i).loop.is]);
+        NestCo(i).lis=unique([loops(i).loop(ps).is]);
+        NestCo(i).loo=loops(i).loop;
+        NestCo(i).ps=loops(i).Picked;
+    end
+    NestCo(i).Lallincids=intersect(imidall,NestCo(i).lallis);
+    NestCo(i).Lallinds=intersect(ball,NestCo(i).lallis);
+    
+    % find the correct zz file  
+    fn=loops(i).fn;
+    NestCo(i).zallis=[];
+    NestCo(i).zis=[];
+    NestCo(i).zst=[];
+    NestCo(i).lst=[];
+    NestCo(i).allzst=[];
+    NestCo(i).zzf=0;
+    NestCo(i).zz=[];
+    for k=1:length(zz)
+        if(isequal(fn,zz(k).fn))
+            if(~isempty(zz(k).fsec))
+                NestCo(i).zz=zz(k).fsec;
+                NestCo(i).zzf=1;
+                NestCo(i).zallis=unique([zz(k).fsec.is]);
+                for z=1:length(zz(k).fsec)
+                    zis=zz(k).fsec(z).is;
+                    NestCo(i).allzst(z)=t(zis(1));
+                    if(length(zis)>=4)
+                        NestCo(i).zst=[NestCo(i).zst t(zis(1))];
+                        NestCo(i).zis=unique([NestCo(i).zis zis]);
+                    end
+                end
+            end
+            break;
+        end
+    end
+
+    % get %ages of flights
+    NestCo(i).lens=[length(t) length(NestCo(i).lallis) length(NestCo(i).lis) ...
+        length(NestCo(i).zallis) length(NestCo(i).zis) length(NestCo(i).begis)];
+    
+    % get # and %ages of coincident points
+    NestCo(i).nlks=[length(imidall) length(NestCo(i).Lallincids) ...
+        length(intersect(imidall,NestCo(i).lis)) length(intersect(imidall,NestCo(i).zallis)) ...
+        length(intersect(imidall,NestCo(i).zis)) length(intersect(imidall,NestCo(i).begis))];
+    NestCo(i).pcs=100*[NestCo(i).lens(2:end)/NestCo(i).lens(1) ...
+        NestCo(i).nlks(2:end)/NestCo(i).nlks(1)];
+    
+    n1=NestCo(i).lens(1)-NestCo(i).lens(6);
+    n2=NestCo(i).nlks(1)-NestCo(i).nlks(6);
+    NestCo(i).pc2=100*[NestCo(i).lens(2:end-1)/n1 ...
+        NestCo(i).nlks(2:end-1)/n2];
+    NestCo(i).LM=loops(i).LM;
+    NestCo(i).LMw=loops(i).LMw;
+
+    NestCo(i).Lincids=[];
+    NestCo(i).Linds=[];
+
+    % check all coincident points
+%     NestCoCh(i)=CheckAllCoin(NestCo(i),i,nloops);
+%     save NestCoDat  NestCo nloops -append
+    
+%     SelectAllZigZags(co,cs,t,imidall,loops(i).LM,loops(i).LMw,ds)
+%     keyboard
+    
+    v1=MyGradient(cs(:,1),t);
+    v2=MyGradient(cs(:,2),t);
+    [ce_o,spee]=cart2pol(v1,v2);
+    ra_co=MyGradient(AngleWithoutFlip(co),t);
+    ra_so=MyGradient(AngleWithoutFlip(so),t);
+    
+    % find the correct straight file  
+    lnum=-1;
+    fn=loops(i).fn;
+    for k=1:length(fltsec)
+        if(isequal(fn,fltsec(k).fn))
+            if(isempty(fltsec(k).fsec))
+                lnum=-1;
+            else
+                lnum=k;
+            end
+            break;
+        end
+    end
+    % get the indices of all the straight lines
+    if(lnum>0)
+        fsec=fltsec(lnum).fsec;
+        is_str=[fsec.is];
+        fsecs=[];
+        for k=1:length(fsec)
+            fsecs=[fsecs k*ones(size(fsec(k).is))];
+        end
+    end
+
+    if(sum(ps)) nf=nf+1; end
+    for j=1:length(ps)
+        numloop=numloop+1;
+        is=loops(i).loop(ps(j)).is;
+        relt=t(is)-t(is(1));
+        relt=relt/max(relt);
+        sp=is(1);ep=is(end);
+                
+        [psi0,meInd,snp]=Thru0Pts(ppsi(is),t(is),pi/18,[],0.08);
+        [f2n0,meInd,snf]=Thru0Pts(f2n(is),t(is),pi/18,[],0.08);
+        [lk0,meInd]=Thru0Pts(s2n(is),t(is),pi/18,[],0.08);
+        b=intersect(psi0,f2n0);
+        NestCoin(numloop).coin=is(b);
+        NestCoin(numloop).lk=~isempty(b);
+        NestCo(i).lst=[NestCo(i).lst t(is(1))];
+        
+        % get incidents from frames
+        [dum,dum,psi0len,ipsi0]=StartFinish(t(is),psi0,0.05);
+        [dum,dum,f2n0len,if2n0]=StartFinish(t(is),f2n0,0.05);
+        [dum,dum,lklen,ilk]=StartFinish(t(is),lk0,0.05);
+        [sbs,sens,blens,imids]=StartFinish(t(is),b,0.05);
+
+        NestCo(i).Lincids=[NestCo(i).Lincids [is(imids);blens]];
+        NestCo(i).Linds=[NestCo(i).Linds is(b)];
+          
+    end
+end
+

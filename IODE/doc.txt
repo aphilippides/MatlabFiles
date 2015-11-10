@@ -1,0 +1,1008 @@
+==================== iode.m ====================
+
+ function iode()
+
+ $Id: iode.m,v 1.31 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ iode: a simple function that calls the graphical user interface of Iode
+	if possible and resorts to the text based interface if necessary
+
+ Usage: iode;
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+
+==================== iodetxt.m ====================
+
+ function iodetxt()
+
+ $Id: iodetxt.m,v 1.6 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ iodetxt: a simple text menu for Iode
+
+ Usage: iodetxt;
+
+
+==================== dfmenu.m ====================
+
+ function dfmenu()
+
+ $Id: dfmenu.m,v 1.96 2003-09-23 22:39:39-05 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ dfmenu: text menu for df and friends.
+
+ Usage: dfmenu;
+
+ Note: The menu allows the user to change the names of independent and
+ dependent variables. In order to avoid conflicts between those names
+ and the names of internal variables, we adopt the convention that user
+ defined variable names can only have one letter, whereas internal
+ variable names have to have at least two letters.
+
+ Acknowledgments:
+	- Many thanks to Robert Jerrard and Richard Laugesen for valuable
+	  feedback and suggestions.
+
+
+==================== df.m ====================
+
+ function df(fs,tt,xx,tlab,xlab,ttl,col,clrscr);
+
+ $Id: df.m,v 1.21.1.11.1.10 2003-01-05 14:55:46-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ df: plots direction fields for differential equations of the form
+	dx/dt=f(t,x).
+
+ Usage example: df(inline('x.*y','x','y'),0:0.1:2,0:0.2:3);
+
+ Parameters:
+	fs: an inline function f(t,x) defining the direction field, or string
+		containing the name of a function of (t,x)
+		(see .octaverc for the implementation of inline functions under
+		Octave)
+	tt: a row vector of t-coordinates
+	xx: a row vector of x-coordinates
+	tlab,xlab,ttl: label for t-axis and x-axis, title of plot
+	col: optional string indicating the color of the line segments
+	clrscr: optional flag indicating whether df is supposed to clear
+		the screen and set 'ishold' to 1 before plotting its direction field.
+		Default is 1.
+
+
+==================== solplot.m ====================
+
+ function xc=solplot(fs,x0,tc,method,col);
+
+ $Id: solplot.m,v 1.25 2003-01-05 14:55:46-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ solplot: plots solutions of initial value problems of the form
+	dx/dt=f(t,x), x(t0)=x0. (note: t0=tc(0))
+
+ Usage: solplot(inline('x.*y','x','y'),3,0:0.01:1,'rk');
+
+ Parameters:
+	fs: an inline function f(t,x), or a string containing the name of
+		such a function
+		(see .octaverc for the implementation of inline functions under Octave
+	tc: a row vector of t-coordinates
+	x0: initial x-coordinate
+	method: optional string indicating the method to be used
+		(e.g., Euler, Runge-Kutta,...)
+		The method has to be a function of the form
+			method(fs,x0,tc)
+		where fs is a string containing the name of the function f(t,x),
+		x0 is the initial value, and tc is a range of arguments, e.g.,
+		linspace(0,pi,100).
+	col: optional string indicating the color of the graph
+		(method argument is required when using col)
+
+ Returns:
+	xc: row vector of x-coordinates of solution
+
+
+==================== euler.m ====================
+
+ function xc=euler(fs,x0,tc);
+
+ $Id: euler.m,v 1.23 2003-01-05 14:55:46-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ euler: computes numerical solutions of initial value problems of the form
+	dx/dt=f(t,x), x(t0)=x0 (where t0=tc(1))
+ using Euler's method. x and f can be scalars or vertical vectors of the
+ same dimension.
+
+ Usage example:
+	xc=euler(inline('x.*y','x','y'), 2.5, 0:0.01:1)
+
+ Parameters:
+	fs: an inline function f(t,x) or string containing the
+		name of a function of (t,x)
+		(see .octaverc for the implementation of inline functions under
+		Octave)
+		The function given by fs must be of the form f(t,x) and return
+		the value of f when evaluated at (t,x). The function should be
+		able to deal with vector input, i.e., the code should use the
+		vectorized operators .*, ./, etc., instead of *, /, etc. A string
+		that may contain nonvectorized operators can be fed through the
+		function vectorize in order to achieve this.
+	x0: initial coordinate (or vector of initial coordinates; the dimension
+		of x0 must match the dimension of the values computed by fs);
+	tc: a row vector of t-coordinates, indexed from 1
+
+ Returns:
+	xc: row vector of x-coordinates of the solution, indexed from 1
+		(or a matrix of coordinates when solving a system of
+		differential equations)
+
+ Notes on indexing:
+ matlab and octave start indexing arrays from 1, and so the initial
+ element of the array xc is xc(1). This is unfortunate because people
+ usually denote the initial x-value for the differential equation by x0,
+ so that x0=xc(1).
+
+
+==================== rk.m ====================
+
+ function xc=rk(fs,x0,tc);
+
+ $Id: rk.m,v 1.22 2003-01-05 14:55:46-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ rk: computes numerical solutions of initial value problems of the form
+	dx/dt=f(t,x), x(t0)=x0 (where t0=tc(1))
+ using Runge-Kutta. x and f can be scalars or vertical vectors of the
+ same dimension.
+
+ Usage: x=rk(inline('x.*y','x','y'), 2.5, 0:0.01:1);
+
+ Parameters:
+	fs: an inline function f(t,x), or a string containing the name of
+		of such a function
+		(see .octaverc for the implementation of inline functions under
+		Octave)
+		The function given by fs must be of the form f(x,t) and return
+		the value of f when evaluated at (x,t). The function should be
+		able to deal with vector input, i.e., the code should use the
+		vectorized operators .*, ./, etc., instead of *, /, etc. A string
+		that may contain nonvectorized operators can be fed through the
+		function vectorize in order to achieve this.
+	x0: initial coordinate (or vector of initial coordinates; the dimension
+		of x0 must match the dimension of the values computed by fs);
+	tc: a row vector of t-coordinates, indexed from 1
+
+ Returns:
+	xc: row vector of x-coordinates of the solution, indexed from 1
+		(or a matrix of coordinates when solving a system of
+		differential equations)
+
+ Notes on indexing:
+ matlab and octave start indexing arrays from 1, and so the initial
+ element of the array xc is xc(1). This is unfortunate because people
+ usually denote the initial x-value for the differential equation by x0,
+ so that x0=xc(1).
+
+
+==================== ppmenu.m ====================
+
+ function ppmenu()
+
+ $Id: ppmenu.m,v 1.75 2003-09-23 22:39:39-05 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ ppmenu: text menu for df and friends.
+
+ Usage: ppmenu;
+
+ Note: The menu allows the user to change the names of independent and
+ dependent variables. In order to avoid conflicts between those names
+ and the names of internal variables, we adopt the convention that user
+ defined variable names can only have one letter, whereas internal
+ variable names have to have at least two letters.
+
+ Acknowledgments:
+	- Many thanks to Robert Jerrard and Richard Laugesen for valuable
+	  feedback and suggestions.
+
+
+==================== pp.m ====================
+
+ function pp(fgs,xx,yy,xlab,ylab,ttl,col,clrscr,t0);
+
+ $Id: pp.m,v 1.17.1.11 2003-01-13 01:53:28-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ pp: plots phase portraits for systems of differential equations of the form
+	dx/dt=f(t,x,y)
+	dy/dt=g(t,x,y)
+ In most cases, f and g will not depend on t, but if they do, one can
+ specifiy the time t=t0 for which the phase portrait is evaluated.
+
+ Usage: pp(inline('[xy(1,:)+xy(2,:);xy(1,:)-xy(2,:)]','t','xy'),0:1:9,-8:1:8);
+
+ Parameters:
+	fgs: inline function F that computes [f(x,y);g(x,y)], or a string
+		containing the name of such a function
+		(see .octaverc for the implementation of inline functions under
+		Octave)
+		This function F must be of the form F=F(t,xy), where t is a time
+		parameter that is ignored by pp but necessary for compatibility
+		with other modules of Iode. The parameter xy is a 2xN matrix
+		whose first row is a vector of x-coordinates, and its second
+		row is a vector of y-coordinates, i.e., x=xy(1,;), and y=xy(2,:).
+	xx: a row vector of x-coordinates
+	yy: a row vector of y-coordinates (not necessarily the same length as xx)
+	xlab,ylab,ttl: label of horizontal/vertical axis, title of plot (optional)
+	col: optional string indicating the color of line segments
+   clrscr: optional flag indicating whether pp is supposed to clear
+       the screen and set 'ishold' to 1 before plotting its direction field.
+       Default is 1.
+	t0: optional number indicating the time t=t0 for which the phase portrait
+		is evaluated; defaults to 0
+
+
+==================== trajplot.m ====================
+
+ function xyc=trajplot(fgs,xy0,tc,method,col);
+
+ $Id: trajplot.m,v 1.26 2003-01-05 14:55:46-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ trajplot: plots solutions of initial value problems of the form
+	dx/dt=f(x,y),
+	dy/dt=g(x,y),
+	x(t0)=x0,
+	y(t0)=y0.
+
+ Usage: trajplot(inline('[xy(1,:)+xy(2,:);xy(1,:)-xy(2,:)]','t','xy'),
+			[3;2.5],linspace(0,1,10));
+
+ Parameters:
+	fs: inline function or string, see pp.m for details
+		(see .octaverc for the implementation of inline functions under
+		Octave)
+	xy0: initial value [x0;y0]
+	tc: a row vector of t-coordinates
+	method: (optional) string indicating numerical method
+       The method has to be a function of the form method(fs,xy0,tc)
+       where fgs is a string containing the names of the function that
+		computes (f;g)
+       xy0=(x0,y0) is the initial value, and tc is a range of arguments,
+		e.g., linspace(0,pi,100).
+	col: (optional) string indicating color of plot (method is
+		required when using col)
+
+ Returns:
+	xyc: matrix of xy-coordinates of solution
+
+
+==================== subvar.m ====================
+
+ function s=subvar(s0,v0,v1)
+
+ $Id: subvar.m,v 1.4 2003-01-08 03:46:16-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ subvar: substitutes a variable for another in an expression
+
+ Usage example: subvar('sin(i)','i','x') yields 'sin(x)'
+
+ Parameters:
+	s0: expression
+	v0: old variable
+	v1: new variable
+
+ Returns:
+	s: s0 with all occurrences of v0 replaced by v1
+
+ v0 must be a variable name. v1 can be almost anything, but the user is
+ responsible for proper use of parentheses. For instance, if v1 is a
+ sum, then it is wise to enclose it in parentheses. subvar will _not_ do
+ this automatically.
+
+ Note that subvar parses the expression s0 and only replaces occurrences
+ of the _variable_ v0 by v1. In particular, it doesn't blindly substitute
+ the string v1	for any substring v0.
+
+ Although this function behaves much like Matlab's subs function, I had
+ to reimplement this because (a) Octave has no such substitute function,
+ and (b) the subs function automatically encloses v1 in parentheses,
+ which is undesirable for the purposes of Iode.
+
+
+==================== fsmenu.m ====================
+
+ function fsmenu()
+
+ $Id: fsmenu.m,v 1.81 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ fsmenu: A text menu for slideshows involving Fourier series
+
+ Usage: fsmenu;
+
+ Note: The menu allows the user to change the names of independent and
+ dependent variables. In order to avoid conflicts between those names
+ and the names of internal variables, we adopt the convention that user
+ defined variable names can only have one letter, whereas internal
+ variable names have to have at least two letters.
+
+ Acknowledgments:
+	- Many thanks to Robert Jerrard and Richard Laugesen for valuable
+	  feedback and suggestions.
+
+
+==================== fs.m ====================
+
+ function [an,bn,abn]=fs(fcns,t0,t1,n,N)
+
+ $Id: fs.m,v 1.15 2003-01-05 14:55:46-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ fs: computes coefficients of Fourier series
+
+ Usage: [an,bn,abn]=fs(inline('sign(x)+abs(x)','x'),-1,1,100);
+
+ Parameters:
+	fcns: inline function of one variable to be developed into a Fourier
+		series, or a string containing the name of a function of one variable
+		(see .octaverc for the implementation of inline functions under
+		Octave)
+	t0, t1: end points of one period
+	n: number of terms to compute
+	N: (optional) number of points in [t0,t1] at which fcns gets
+		evaluated when computing integrals, defaults to 64*n
+
+ Return values:
+	an, bn: column vectors of coefficients of Fourier series
+	abn: absolute value of an+i*bn
+
+ Note: The treatment of the coefficient a0 differs from the textbook
+ (Edwards-Penney), but it's much cleaner from the point of view of
+ software design. The book uses a 0th eigenfunction of 1/2, while
+ we use a 0th eigenfunction of 1.
+
+
+==================== slideshow.m ====================
+
+ function slideshow(x,y,f,step,fix,hld,ttl,xlab,ylab,tlab,nmin,nmax,col,f2,col2);
+
+ $Id: slideshow.m,v 1.18 2003-01-27 10:22:44-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ slideshow: shows successive slices of a grid of values
+
+ Usage: slideshow(0:0.1:1,0:0.1:1,f,1,1,0,'title','x','y','g');
+
+ Parameters:
+	x: row vector of x-values
+	y: row vector of y-values
+	f: grid of values f(x,y)
+
+ Optional parameters:
+	step: nonzero value means step-by-step, 0 means animation (default 1)
+	fix: nonzero value indicates fixed axes (default 1)
+	hld: nonzero value indicates that successive plots are superimposed
+			(default 0)
+	ttl: title string (default 'no title')
+	xlab: label of x-axis (default ' ')
+	ylab: label of y-axis (default ' ')
+	tlab: label of t-axis (default ' ')
+		This is the time axis of the slide show.
+	nmin: index of initial slide (default 1)
+	nmax: index of terminal slide (default length(y))
+	col: color of plot (default 'r')
+	f2: row vector of values f(x) to be plotted on every slide (default [])
+	col2: color of plot of f2 (default 'b')
+
+
+==================== partialsum.m ====================
+
+ function f=partialsum(L,an,bn,t,nmax)
+
+ $Id: partialsum.m,v 1.9.1.12 2003-01-04 03:58:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ partialsum: evaluates partial sums of Fourier series.
+
+ Usage: f=partialsum(pi,0,[3,2,1],[-1,5,1],linspace(-pi,pi,100),3);
+
+ Parameters:
+	L: half period
+	an, bn: column vectors of Fourier coefficients
+	t: row vector of t-values
+	nmax: (optional) maximal summation index
+
+ Returns:
+	f: grid of partial sums evaluated at t, i.e.,
+		f(i,:)= (i-1)th partial sum evaluated at t
+
+
+==================== mp.m ====================
+
+ function tc=mp(t0,t1,t)
+
+ $Id: mp.m,v 1.12 2003-01-05 14:43:15-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ mp: A helper function for creating periodic functions;
+		the composition of a function f with mp will be
+		periodic with period t1-t0, and f(mp(t))=f(t)
+		if t0<=t<t1.
+
+
+==================== mvmenu.m ====================
+
+ function mvmenu()
+
+ $Id: mvmenu.m,v 1.54 2003-09-23 22:39:39-05 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ mvmenu: text menu for 2nd order linear ODEs
+
+ Usage: mvmenu;
+
+ Note: The menu allows the user to change the names of independent and
+ dependent variables. In order to avoid conflicts between those names
+ and the names of internal variables, we adopt the convention that user
+ defined variable names can only have one letter, whereas internal
+ variable names have to have at least two letters.
+
+ Acknowledgments:
+	- Many thanks to Robert Jerrard and Richard Laugesen for valuable
+	  feedback and suggestions.
+
+
+==================== definput.m ====================
+
+ function n=definput(s,def,intro)
+
+ $Id: definput.m,v 1.11 2002-12-21 17:38:39-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ definput: Input function with defaults.
+
+ Usage: n=definput('prompt',default_value,'introductory line')
+
+ Parameters:
+	s: prompt for user
+	def: (optional) default value
+	intro: (optional) introductory text
+
+ Returns:
+	n: value entered by user (same type as default)
+
+
+==================== choose.m ====================
+
+ function n=choose(s,lst,def,intro)
+
+ $Id: choose.m,v 1.6 2002-12-21 17:38:39-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ choose: Allows users to choose from a list of one-character options
+
+ Usage: n=choose('Quit (y/n)','ny',default_value,'introductory line')
+
+ Parameters:
+	s: prompt for user
+	lst: string of one-character options, e.g., 'ny' for yes/no
+	def: (optional) default index
+	intro: (optional) introductory text
+
+ Returns:
+	n: The index of the option chosen by the user; e.g., if lst=='ny',
+	then 0 means 'n', and 1 means 'y'
+
+ Warning: Indices start at 0, not at 1, as in C but not in Matlab.`
+ The reason for this is that I want to be able to use the results
+ as boolean values, e.g., if the list of options is 'ny', then I
+ want 'n' to evaluate to false.
+
+
+==================== complain.m ====================
+
+ function complain(msg,intro)
+
+ $Id: complain.m,v 1.6 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ complain: Print a message surrounded by empty lines and beep.
+
+ Parameters:
+	msg: message (typically an error message)
+	intro: introductory words, e.g., 'Exception!'. Defaults to 'Error:'
+		when missing.
+
+
+==================== exportmenu.m ====================
+
+ function [fn,ex]=exportmenu(fname,ext)
+
+ $Id: exportmenu.m,v 1.10 2003-09-23 22:39:39-05 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ exportmenu: a little menu for exporting plots
+
+ Usage: exportmenu(default_file_name,default_extension)
+ The default extension is optional.
+
+ Returns: The file name and extension entered by the user
+
+ Convention: The extension determines the function that gets called
+ when exporting plots, e.g., 'foo.eps' will be saved as encapsulated
+ PostScript, using 'export2eps'.
+
+
+==================== export2eps.m ====================
+
+ function export2eps(fn)
+
+ $Id: export2eps.m,v 1.7 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ export2eps: a little method for exporting plots to eps
+
+ Usage: export2eps(file_name)
+
+
+==================== export2gif.m ====================
+
+ function export2gif(fn)
+
+ $Id: export2gif.m,v 1.7 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ export2gif: a little method for exporting plots to gif
+
+ Usage: export2gif(file_name)
+
+
+==================== export2fig.m ====================
+
+ function export2fig(fn)
+
+ $Id: export2fig.m,v 1.7 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ export2fig: a little method for exporting plots to fig
+
+ Usage: export2fig(file_name)
+
+
+==================== export2png.m ====================
+
+ function export2png(fn)
+
+ $Id: export2png.m,v 1.7 2003-02-11 15:38:58-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ export2png: a little method for exporting plots to png
+
+ Usage: export2png(file_name)
+
+
+==================== fixaxes.m ====================
+
+ function fixaxes(ax)
+
+ $Id: fixaxes.m,v 1.20 2003-01-05 14:43:15-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ fixaxes: Clears the plot window and initializes it in such a way
+	that both Octave and Matlab treat axes in the same way
+
+ Parameters:
+	ax: Parameter for 'axis' function; see 'help axis'
+
+ fixaxes does the following:
+	- it clears the plot window
+	- it issues the 'hold on' command, and
+	- it calls 'axis' with the desired parameters and makes sure
+		that Matlab obeys
+
+ Many thanks to Ben Langhals for solving the labeling problem!
+
+
+==================== freeaxes.m ====================
+
+ function freeaxes
+
+ $Id: freeaxes.m,v 1.10 2002-12-26 13:54:46-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ freeaxes: Clears the plot and enables autoscaling in a way
+		that works for both Octave and Matlab
+
+
+==================== sample.m ====================
+
+ function m=sample(tc,xc)
+
+ $Id: sample.m,v 1.6 2003-01-11 00:49:13-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ sample: an illustration of the interface for df.m, euler.m, and rk.m
+
+ This function isn't called by any module of Iode; it merely serves
+ as an example of how to implement a function that'll work with the
+ numerical solver modules euler.m and rk.m, as well as the direction
+ field module df.m.
+
+ For example, an interactive session with df.m and rk.m might go as follows:
+	octave:1> df('sample',linspace(-pi,pi,15),linspace(-pi,pi,15));
+	octave:2> tc=linspace(-pi,pi,100);
+	octave:3> xc=rk('sample',1,tc);
+	octave:4> hold on;
+	octave:5> plot(tc,xc);
+ This session creates a direction field using this function and computes
+ and plots a numerical solution with x(-pi)=0.5.
+
+
+==================== hat.m ====================
+
+ function f=hat(x,a,b)
+
+ $Id: hat.m,v 1.3 2002-12-21 17:38:39-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ hat: returns 1 for a<x<b, 0 otherwise
+
+ Note: This only makes sense for a<b, but hat does _not_ check this.
+
+
+==================== triangle.m ====================
+
+ function f=triangle(x,a,b,m)
+
+ $Id: triangle.m,v 1.4 2002-12-21 17:38:39-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ triangle: piecewise linear function that 
+       - returns 0 for x<a or x>b
+       - has a maximum of 1 at x=m
+
+ Note: This only makes sense for a<m<b,
+ but the function does _not_ check this.
+
+ The argument m is optional and defaults to (a+b)/2.
+
+
+==================== bump.m ====================
+
+ function f=bump(x,a,b,m)
+
+ $Id: bump.m,v 1.5 2002-12-21 17:38:39-06 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ bump: C^1 function that
+		- returns 0 for x<a or x>b
+		- has a maximum of 1 at x=m
+		- is strictly monotone between a and m as well as m and b
+
+ Note: This only makes sense for a<m<b,
+ but bump does _not_ check this.
+
+ The argument m is optional and defaults to (a+b)/2.
+
+
+==================== coeff.m ====================
+
+ function cn=coeff(fcns,efcns,wn,x)
+
+ $Id: coeff.m,v 1.19.1.6 2003-06-22 01:02:05-05 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ coeff: computes coefficients of series expansions with respect to
+	some system of orthogonal functions
+
+ Usage: cn=coeff(inline('sign(x)','x'),'sinef',(1:5)'*pi,linspace(-1,1,100));
+
+ Parameters:
+   fcns: inline function of one variable to be developed into a series,
+		or a string containing the name of the function to be used
+		(see .octaverc for the implementation of inline functions under
+		Octave)
+   efncs: a function that computes some system of orthogonal eigenfunctions,
+		given by a string containing the name or by an inline function
+		Note that these eigenfunctions do not need to be normalized because
+		coeff.m takes care of normalization.
+   wn: column vector of square roots of eigenvalues
+   x: row vector of x-values
+
+ Return values:
+   cn: column vector of coefficients of fcns with respect to the system
+		given by efcns and wn, computed with the trapezoidal rule
+
+ The usage example computes the first five terms of the Fourier sine
+ series of the function sign(x) on the interval [-1,1]. The function
+ passed in the parameter efcns must conform to a certain interface that
+ is described in the file cosef.m. Examples of functions conforming
+ to the interface include cosef.m and sinef.m.
+
+ The coefficients cn are approximated using the trapezoidal rule. The
+ vector x indicates where the function fcns will be evaluated. It
+ does not have to be evenly spaced. In general, the quality of the
+ approximation will depend upon the number of points in x.
+
+
+==================== dirichlet.m ====================
+
+ function [efcns,wn]=dirichlet(L,n)
+
+ $Id: dirichlet.m,v 1.14 2003-01-05 14:43:15-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ dirichlet: finds eigenfunctions and eigenvalues for
+	Dirichlet boundary conditions, for use with coeff.m
+
+ Usage: [ef,wn]=dirichlet(pi,25)
+
+ Parameters:
+	L: max value in interval [0,L]
+	n: number of eigenvalues to be computed
+
+ Return values:
+	efcns: name of function that computes eigenfunctions
+	wn: column vector of square roots of eigenvalues
+
+
+==================== neumann.m ====================
+
+ function [efcns,wn]=neumann(L,n)
+
+ $Id: neumann.m,v 1.14 2003-01-04 02:35:33-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ neumann: finds eigenfunctions and eigenvalues for
+	Neumann boundary conditions
+ 
+ Usage: [ef,wn]=neumann(pi,25)
+ 
+ Parameters:
+   L: max value in interval [0,L]
+   n: number of eigenvalues to be computed
+   
+ Return values:
+   efcns: name of function that computes eigenfunctions
+   wn: column vector of square roots of eigenvalues
+
+
+==================== heat.m ====================
+
+ function T=heat(efcns,wn,cn,k,x,t,dummy)
+
+ $Id: heat.m,v 1.12 2003-01-05 15:32:33-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ heat: computes series solutions of the heat equation u_xx=ku_t
+
+ Usage: T=heat('cosef', (0:3)', [.5;-1;-2;3.4], 1, 0:0.1:pi, 0:0.1:5)
+
+ Parameters:
+	efcns: string containing the name of a function that computes
+		eigenfunctions, or an inline function
+	wn: a column vector of square roots of eigenvalues
+	cn: a column vector of coefficients in series expansion of initial
+		temperature distribution
+	k: thermal diffusivity
+	x: row vector of x-values
+	t: row vector of t-values
+	dummy: (optional) dummy parameter to make sure that heat.m takes as many
+		parameters as wave.m (just to make Matlab happy...)
+
+ Return values:
+	T: rectangular grid of values of the solution u(x,t)
+
+
+==================== wave.m ====================
+
+ function W=wave(efcns,wn,cn1,c,x,t,cn2)
+
+ $Id: wave.m,v 1.18 2003-01-16 23:01:11-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ wave: computes series solutions of the wave equation u_xx=c^2u_tt
+
+ Usage: W=wave('sinef', (1:3)', [.5;-1;3.4], 1, 0:0.1:pi, 0:0.1:5, [0;0;0])
+
+ Parameters:
+   efcns: string containing the name of the function that computes
+		eigenfunctions, or inline function
+   wn: column vector of square roots of eigenvalues
+   cn1: column vector of coefficients in series expansion of initial position
+   c: speed of light
+   x: row vector of x-values
+   t: row vector of t-values
+   cn2:(optional) column vector of coefficients in series expansion of initial
+		velocity (default is 0*cn1)
+
+ Return values:
+   W: rectangular grid of values of the solution u(x,t)
+
+
+==================== cosef.m ====================
+
+ function f=cosef(ww,x,i)
+
+ $Id: cosef.m,v 1.14 2003-06-22 01:02:05-05 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ cosef: an implementation of the interface for eigenfunctions suitable
+	for use with coeff.m
+
+ Note that these eigenfunctions do _not_ need to be normalized because
+ the module coeff.m takes care of this.
+
+ Usage: ef=cosef(2,linspace(0,pi,30),3);
+
+ Parameters:
+   ww: square root of eigenvalue or column vector of roots of eigenvalues
+   x: scalar, or row vector or matrix of x-values
+   i: index or column vector of indices indicating the location of the
+		entry or entries of ww in the list of all eigenvalues
+
+ In order to conform to the interface for eigenfunctions, a function must
+ return a meaningful value whenever the product ww*x is defined. This is
+ the case
+	- if ww is a scalar and x is anything, or
+	- if x is a scalar and ww is anything, or
+	- if both ww and x are vectors.
+ Note that in the third case, the product ww*x is the outer product of two
+ vectors. When writing rather basic eigenfunctions that only depend on the
+ product ww*x, this will not concern you. However, when writing a
+ sophisticated function whose result doesn't just depend on ww*n but on
+ the index i as well, then you need to make sure that the outer product
+ case is handled correctly. See the file periodicef.m for an example of
+ how to deal with outer products.
+
+ Return values:
+   f: cos(ww*x)
+
+
+==================== sinef.m ====================
+
+ function f=sinef(ww,x,i)
+
+ $Id: sinef.m,v 1.11 2003-06-22 01:02:05-05 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ sinef: an implementation of the interface for eigenfunctions suitable
+	for use with coeff.m
+
+ Note that these eigenfunctions do _not_ need to be normalized because
+ the module coeff.m takes care of this.
+
+ Usage: ef=sinef(2,linspace(0,pi,30),3);
+
+ Parameters:
+   ww: square root of eigenvalue or column vector of roots of eigenvalues
+   x: scalar, or row vector or matrix of x-values
+   i: index or column vector of indices indicating the location of the
+		entry or entries of ww in the list of all eigenvalues
+
+ In order to conform to the interface for eigenfunctions, a function must
+ return a meaningful value whenever the product ww*x is defined. This is
+ the case
+	- if ww is a scalar and x is anything, or
+	- if x is a scalar and ww is anything, or
+	- if both ww and x are vectors.
+ Note that in the third case, the product ww*x is the outer product of two
+ vectors. If you are writing a sophisticated function whose result doesn't
+ just depend on ww*n but on the index i as well, then you need to make
+ sure that the outer product case is handled correctly.
+
+ Return values:
+   f: sin(ww*x)
+
+
+==================== pdemenu.m ====================
+
+ function pdemenu()
+
+ $Id: pdemenu.m,v 1.42 2003-09-23 22:39:39-05 brinkman Exp $
+ (c) 2001, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ pdemenu: menu module for both heat and wave equation
+
+ Usage: pdemenu;
+
+ Acknowledgments:
+	- Many thanks to Robert Jerrard and Richard Laugesen for valuable
+	  feedback and suggestions.
+
+
+==================== trapsum.m ====================
+
+ function z=trapsum(x,y)
+
+ $Id: trapsum.m,v 1.10 2003-01-12 14:01:22-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ trapsum: compute integrals using the trapezoidal rule
+
+ Parameters:
+    x: (row) vector of x-values (may be nonuniformly spaced!) or
+		matrix of x-values where each row is a vector of x-values
+    y: (row) vector or matrix of y-values of the same width as x
+
+ Returns:
+    z: integral of y(x), computed using the trapezoidal rule
+		z is a scalar if x and y are vectors, and it is a column
+		vector if x and y are matrices (the i-th entry of z in
+		this case is the integral of the i-th row of y integrated
+		over the i-th row of x)
+		
+
+ Note: Although Matlab knows the trapezoidal rule, Octave doesn't, so that
+ I had to reimplement it for Iode.
+
+ Usage example:	x=linspace(0,1,100);
+					z=trapsum(x,x.*x);
+
+
+==================== periodic.m ====================
+
+ function [efcns,wn]=periodic(L,n)
+
+ $Id: periodic.m,v 1.6 2003-01-04 03:31:22-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ periodic: finds eigenfunctions and eigenvalues for
+	 periodic boundary conditions
+ 
+ Usage: [ef,wn]=periodic(pi,25)
+ 
+ Parameters:
+   L: max value in interval [0,L]
+   n: number of eigenvalues to be computed
+   
+ Return values:
+   efcns:	name of function that computes eigenfunctions, see periodicef.m
+   wn: column vector of square roots of eigenvalues
+
+ Each nonzero eigenvalue appears twice in wn. The eigenfunction periodicef.m
+ receives an eigenvalue w as well as its index i in wn, and it returns
+ cos(wx) if i is odd, sin(wx) if i is even.
+
+
+==================== periodicef.m ====================
+
+ function f=periodicef(ww,x,i)
+
+ $Id: periodicef.m,v 1.7 2003-01-07 20:40:33-06 brinkman Exp $
+ (c) 2002, Peter Brinkmann (brinkman@math.uiuc.edu)
+
+ periodicef: an implementation of the interface for eigenfunctions as
+	described in cosef.m
+
+ Usage: ef=periodicef(2,linspace(0,pi,30),5);
+
+ Parameters:
+   ww: square root of eigenvalue or column vector of roots of eigenvalues
+   x: scalar, or row vector or matrix of x-values
+   i: index or column vector of indices indicating the location of the
+		entry or entries of ww in the list of all eigenvalues
+
+ Return values:
+   f: a row of f corresponding to index j and eigenvalue w_j
+		cos(w_j*x) if j is odd, and sin(w_j*x) if j is even
+
+

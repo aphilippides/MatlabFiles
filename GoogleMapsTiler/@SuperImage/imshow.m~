@@ -1,0 +1,8 @@
+function imshow(obj)
+set(0,'units','pixels');
+res = get(0,'ScreenSize');
+maxsize = 0.7 * res(3:4); % 70% of screen
+if any(obj.pix > maxsize)
+else
+    im = obj.getimpart(1:obj.pix(1),
+end

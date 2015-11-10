@@ -1,0 +1,52 @@
+
+n_landmarks=5;
+world=new_world(0,n_landmarks,0);
+ant=simple_ant(world);
+ant.dx=30;
+dt=ant.dt;
+% Initialise X and P
+[X,P]=init(world,ant);
+
+% plot initial estimates
+clf
+plot_all(world,ant,X,P);
+
+% Process Noise
+Q=0.5; 
+%Measurement Noise
+% R=0.35; 
+R=[ 0.3366    0.0043   -0.0061;...
+        0.0043    0.3290    0.0047;...
+        -0.0061    0.0047    0.3328];
+
+%main loop
+for i=1:1000
+    % make a move
+    % apply a random impulse
+    U=Q*randn(1,3);
+    ant.x=ant.x+ant.dx*dt;
+    ant.y=ant.y+ant.dy*dt;
+    ant.z=ant.z+ant.dz*dt;
+    
+    ant.dx=ant.dx+U(1)*dt;
+    ant.dy=ant.dy+U(2)*dt;
+    ant.dz=ant.dz+U(2)*dt;   
+    
+    % predict 
+    [X,P]=EKFpredict(U,X,P,Q,dt);
+    
+    % measure
+    for n=1:n_landmarks
+        
+        % Get measured heading
+        XYZ=raytrace(ant,world,n);
+        if sum(XYZ(:))~=0
+            % Incorporate measurement
+            [X,P]=EKFmeasure(XYZ,X,P,R,n);
+        end
+    end
+    % plot current estimates
+    if mod(i,10)==0
+        plot_all(world,ant,X,P);
+    end
+end

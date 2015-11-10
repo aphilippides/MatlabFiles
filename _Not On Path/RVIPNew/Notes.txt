@@ -1,0 +1,22 @@
+Notes to try:
+
+
+Demo:
+
+Try the 2 demo functions with 2 and the 1 thing
+
+Try the waiting thing with kb check
+
+try getting rid of the kbcheck and do help kbcheck to make returns return
+
+Also do help ask to see if there's a better way for it to continue (wo 2 returns)
+
+
+do help psychserial
+
+Check cmu works
+
+
+1 hour meeting
+1 hour at home
+1.5 hours other day

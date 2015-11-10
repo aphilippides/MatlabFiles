@@ -1,0 +1,12 @@
+function[cent,EPt,ar,len,ang,el]=GetBeeEllipse(im,x,y,tval)
+if(nargin<5) tval=0.8; end;
+[r,c,cent]=MySampleRegion(im,1e6);
+r=r*2;
+cent(2)=2*cent(2)-2+y;
+cent(1)=cent(1)-1+x;
+[ar,ax,ang,el]=ellipse(c,r,[],tval);
+el=[el(:,1)-1+x,el(:,2)-2+y];
+len=ax(1);
+ang=ang(1);
+[ex,ey]=pol2cart(ang,len);
+EPt=[ex,ey];

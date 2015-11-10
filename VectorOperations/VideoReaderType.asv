@@ -1,0 +1,21 @@
+% function[vO,vObj]=VideoReaderType(fn,vO)
+%
+% vO=1 means use videoReader, 0 = use mmread (slow)
+
+function[vO,vObj]=VideoReaderType(fn,vO)
+vObj=[];
+if(nargin<2)
+    if exist('VideoReader','builtin')
+        vO=1;
+    else
+        vO=0;
+    end
+end
+if(vO)
+    try 
+        vObj=VideoReader(fn);
+    catch me
+        vObj=[];
+        vO=0;
+    end
+end

@@ -1,0 +1,9 @@
+function [f,dfdX,dfdU]=Movement_Model(X,U,dt)
+
+% new estimated position
+f(1:6)=X(1:6)+X(7:12)*dt;
+f(7:12)=X(7:12)+U*dt;
+
+% jacobian calculations
+dfdX=eye(6);
+dfdU=eye(6);
